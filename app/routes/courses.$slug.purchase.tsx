@@ -76,7 +76,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const mode = url.searchParams.get("mode");
 
-  if (isUserEnrolled(currentUserId, course.id) && mode !== "team") {
+  const enrolled = isUserEnrolled(currentUserId, course.id);
+
+  if (enrolled && mode !== "team") {
     throw redirect(`/courses/${slug}?already_enrolled=1`);
   }
 
@@ -112,6 +114,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     tierInfo,
     country,
     countryName,
+    isEnrolled: enrolled,
   };
 }
 
@@ -167,11 +170,13 @@ export default function PurchaseConfirmation({
     pppPrice,
     tierInfo,
     countryName,
+    isEnrolled,
   } = loaderData;
   const fetcher = useFetcher();
   const isSubmitting = fetcher.state !== "idle";
   const [searchParams] = useSearchParams();
-  const defaultMode = searchParams.get("mode") === "team" ? "team" : "self";
+  const defaultMode =
+    isEnrolled || searchParams.get("mode") === "team" ? "team" : "self";
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
@@ -257,63 +262,69 @@ export default function PurchaseConfirmation({
             )}
 
             <Tabs defaultValue={defaultMode}>
-              <TabsList className="mb-6 w-full">
-                <TabsTrigger value="self" className="flex-1">
-                  Buy for Myself
-                </TabsTrigger>
-                <TabsTrigger value="team" className="flex-1">
-                  Buy for Your Team
-                </TabsTrigger>
-              </TabsList>
+              {!isEnrolled && (
+                <TabsList className="mb-6 w-full">
+                  <TabsTrigger value="self" className="flex-1">
+                    Buy for Myself
+                  </TabsTrigger>
+                  <TabsTrigger value="team" className="flex-1">
+                    Buy for Your Team
+                  </TabsTrigger>
+                </TabsList>
+              )}
 
               <TabsContentNoShift>
                 {/* Buy for Myself */}
-                <TabsContent value="self" forceMount>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      {isDiscounted ? (
-                        <>
-                          <span className="text-sm text-muted-foreground">
-                            Original price
-                          </span>
-                          <div className="text-lg text-muted-foreground line-through">
-                            {formatPrice(course.price)}
-                          </div>
-                          <span className="text-sm text-muted-foreground">
-                            Your price
-                          </span>
-                          <div className="text-3xl font-bold">
-                            {formatPrice(pppPrice)}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-sm text-muted-foreground">
-                            Total
-                          </span>
-                          <div className="text-3xl font-bold">
-                            {formatPrice(pppPrice)}
-                          </div>
-                        </>
-                      )}
+                {!isEnrolled && (
+                  <TabsContent value="self" forceMount>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        {isDiscounted ? (
+                          <>
+                            <span className="text-sm text-muted-foreground">
+                              Original price
+                            </span>
+                            <div className="text-lg text-muted-foreground line-through">
+                              {formatPrice(course.price)}
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              Your price
+                            </span>
+                            <div className="text-3xl font-bold">
+                              {formatPrice(pppPrice)}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-sm text-muted-foreground">
+                              Total
+                            </span>
+                            <div className="text-3xl font-bold">
+                              {formatPrice(pppPrice)}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Link to={`/courses/${course.slug}`}>
+                          <Button variant="outline">Go Back</Button>
+                        </Link>
+                        <fetcher.Form method="post">
+                          <input
+                            type="hidden"
+                            name="intent"
+                            value="confirm-purchase"
+                          />
+                          <Button size="lg" disabled={isSubmitting}>
+                            {isSubmitting
+                              ? "Processing..."
+                              : "Confirm Purchase"}
+                          </Button>
+                        </fetcher.Form>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Link to={`/courses/${course.slug}`}>
-                        <Button variant="outline">Go Back</Button>
-                      </Link>
-                      <fetcher.Form method="post">
-                        <input
-                          type="hidden"
-                          name="intent"
-                          value="confirm-purchase"
-                        />
-                        <Button size="lg" disabled={isSubmitting}>
-                          {isSubmitting ? "Processing..." : "Confirm Purchase"}
-                        </Button>
-                      </fetcher.Form>
-                    </div>
-                  </div>
-                </TabsContent>
+                  </TabsContent>
+                )}
 
                 {/* Buy for Your Team */}
                 <TabsContent value="team" forceMount>
