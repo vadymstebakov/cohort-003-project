@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   GraduationCap,
   Shield,
+  Tag,
   Users,
   Moon,
   Sun,
@@ -73,6 +74,12 @@ const navItems: NavItem[] = [
     label: "Manage Courses",
     to: "/admin/courses",
     icon: <Shield className="size-4" />,
+    roles: [UserRole.Admin],
+  },
+  {
+    label: "Categories",
+    to: "/admin/categories",
+    icon: <Tag className="size-4" />,
     roles: [UserRole.Admin],
   },
 ];
