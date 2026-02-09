@@ -15,6 +15,7 @@ type YouTubePlayerProps = {
   durationMinutes: number | null;
   watchProgress: number;
   trackingEnabled: boolean;
+  autoplay?: boolean;
 };
 
 function extractVideoId(url: string): string | null {
@@ -68,6 +69,7 @@ export function YouTubePlayer({
   durationMinutes,
   watchProgress: initialProgress,
   trackingEnabled,
+  autoplay = false,
 }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YT.Player | null>(null);
@@ -140,6 +142,7 @@ export function YouTubePlayer({
           enablejsapi: 1,
           rel: 0,
           modestbranding: 1,
+          ...(autoplay ? { autoplay: 1 } : {}),
         },
         events: {
           onReady: () => {
@@ -147,6 +150,9 @@ export function YouTubePlayer({
             if (player && typeof player.getDuration === "function") {
               const d = player.getDuration();
               if (d > 0) setVideoDuration(d);
+            }
+            if (autoplay && player && typeof player.playVideo === "function") {
+              try { player.playVideo(); } catch { /* silently fail */ }
             }
           },
           onStateChange: (event: YT.OnStateChangeEvent) => {
@@ -184,7 +190,7 @@ export function YouTubePlayer({
       }
       playerRef.current = null;
     };
-  }, [videoId, startPosition, sendTrackingEvent, startTracking, stopTracking, updateProgress]);
+  }, [videoId, startPosition, autoplay, sendTrackingEvent, startTracking, stopTracking, updateProgress]);
 
   if (!videoId) {
     return (

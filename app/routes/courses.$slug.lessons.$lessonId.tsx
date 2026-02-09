@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useFetcher, useNavigate } from "react-router";
 import { toast } from "sonner";
 import type { Route } from "./+types/courses.$slug.lessons.$lessonId";
@@ -328,6 +328,28 @@ export async function action({ params, request }: Route.ActionArgs) {
   throw data("Invalid action", { status: 400 });
 }
 
+const AUTOPLAY_KEY = "cadence-autoplay";
+
+function useAutoplay() {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    try {
+      setEnabled(localStorage.getItem(AUTOPLAY_KEY) === "true");
+    } catch { /* silently fail */ }
+  }, []);
+
+  const toggle = useCallback(() => {
+    setEnabled((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(AUTOPLAY_KEY, String(next)); } catch { /* silently fail */ }
+      return next;
+    });
+  }, []);
+
+  return [enabled, toggle] as const;
+}
+
 export default function LessonViewer({ loaderData }: Route.ComponentProps) {
   const {
     course,
@@ -349,6 +371,7 @@ export default function LessonViewer({ loaderData }: Route.ComponentProps) {
     pppBlockedCountry,
     pppPurchaseCountry,
   } = loaderData;
+  const [autoplay, toggleAutoplay] = useAutoplay();
   const fetcher = useFetcher({ key: `mark-complete-${lesson.id}` });
   const quizFetcher = useFetcher({ key: `quiz-${lesson.id}` });
   const navigate = useNavigate();
@@ -461,15 +484,38 @@ export default function LessonViewer({ loaderData }: Route.ComponentProps) {
 
         {/* YouTube Video */}
         {lesson.videoUrl && (
-          <YouTubePlayer
-            videoUrl={lesson.videoUrl}
-            lessonId={lesson.id}
-            title={lesson.title}
-            startPosition={lastWatchPosition}
-            durationMinutes={lesson.durationMinutes}
-            watchProgress={watchProgress}
-            trackingEnabled={enrolled && !!currentUserId}
-          />
+          <>
+            <div className="mb-2 flex items-center justify-end">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                Autoplay
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={autoplay}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    autoplay ? "bg-primary" : "bg-muted"
+                  }`}
+                  onClick={toggleAutoplay}
+                >
+                  <span
+                    className={`inline-block size-3.5 transform rounded-full bg-white transition-transform ${
+                      autoplay ? "translate-x-5" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </label>
+            </div>
+            <YouTubePlayer
+              videoUrl={lesson.videoUrl}
+              lessonId={lesson.id}
+              title={lesson.title}
+              startPosition={lastWatchPosition}
+              durationMinutes={lesson.durationMinutes}
+              watchProgress={watchProgress}
+              trackingEnabled={enrolled && !!currentUserId}
+              autoplay={autoplay}
+            />
+          </>
         )}
 
         {/* Lesson Content */}
