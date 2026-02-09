@@ -332,19 +332,51 @@ By the end of this course, you'll understand why TypeScript has become the defau
           title: "What is TypeScript?",
           duration: 8,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>What is TypeScript?</h2><p>TypeScript is a typed superset of JavaScript that compiles to plain JavaScript. It adds optional static typing and class-based object-oriented programming to the language.</p><h3>Why TypeScript?</h3><ul><li>Catch errors at compile time instead of runtime</li><li>Better IDE support with autocompletion</li><li>Easier to refactor large codebases</li><li>Self-documenting code through types</li></ul>",
+          content: `## What is TypeScript?
+
+TypeScript is a typed superset of JavaScript that compiles to plain JavaScript. It adds optional static typing and class-based object-oriented programming to the language.
+
+### Why TypeScript?
+
+- Catch errors at compile time instead of runtime
+- Better IDE support with autocompletion
+- Easier to refactor large codebases
+- Self-documenting code through types`,
         },
         {
           title: "Installing and Configuring TypeScript",
           duration: 12,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Setting Up TypeScript</h2><p>Let's get TypeScript installed and configured in your development environment.</p><h3>Installation</h3><pre><code class=\"language-bash\">npm install -g typescript\ntsc --version</code></pre><h3>tsconfig.json</h3><p>The <code>tsconfig.json</code> file configures the TypeScript compiler options for your project.</p>",
+          content: `## Setting Up TypeScript
+
+Let's get TypeScript installed and configured in your development environment.
+
+### Installation
+
+\`\`\`bash
+npm install -g typescript
+tsc --version
+\`\`\`
+
+### tsconfig.json
+
+The \`tsconfig.json\` file configures the TypeScript compiler options for your project.`,
         },
         {
           title: "Your First TypeScript Program",
           duration: 15,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Hello, TypeScript!</h2><p>Let's write our first TypeScript program and see the compilation process in action.</p><pre><code class=\"language-typescript\">function greet(name: string): string {\n  return `Hello, ${name}!`;\n}\n\nconsole.log(greet('World'));</code></pre>",
+          content: `## Hello, TypeScript!
+
+Let's write our first TypeScript program and see the compilation process in action.
+
+\`\`\`typescript
+function greet(name: string): string {
+  return \\\`Hello, \\\${name}!\\\`;
+}
+
+console.log(greet('World'));
+\`\`\``,
         },
       ],
     },
@@ -355,25 +387,69 @@ By the end of this course, you'll understand why TypeScript has become the defau
           title: "Primitive Types",
           duration: 10,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Primitive Types</h2><p>TypeScript supports the same primitive types as JavaScript, plus a few extras.</p><ul><li><code>string</code> — text values</li><li><code>number</code> — numeric values (integer and float)</li><li><code>boolean</code> — true/false</li><li><code>null</code> and <code>undefined</code></li><li><code>symbol</code> and <code>bigint</code></li></ul>",
+          content: `## Primitive Types
+
+TypeScript supports the same primitive types as JavaScript, plus a few extras.
+
+- \`string\` — text values
+- \`number\` — numeric values (integer and float)
+- \`boolean\` — true/false
+- \`null\` and \`undefined\`
+- \`symbol\` and \`bigint\``,
         },
         {
           title: "Arrays and Tuples",
           duration: 12,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Arrays and Tuples</h2><p>Learn how to type arrays and fixed-length tuples in TypeScript.</p><pre><code class=\"language-typescript\">const numbers: number[] = [1, 2, 3];\nconst pair: [string, number] = ['age', 25];</code></pre>",
+          content: `## Arrays and Tuples
+
+Learn how to type arrays and fixed-length tuples in TypeScript.
+
+\`\`\`typescript
+const numbers: number[] = [1, 2, 3];
+const pair: [string, number] = ['age', 25];
+\`\`\``,
         },
         {
           title: "Type Aliases and Interfaces",
           duration: 18,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Type Aliases vs Interfaces</h2><p>Both type aliases and interfaces let you define custom types, but they have subtle differences.</p><h3>Type Alias</h3><pre><code class=\"language-typescript\">type User = {\n  name: string;\n  age: number;\n};</code></pre><h3>Interface</h3><pre><code class=\"language-typescript\">interface User {\n  name: string;\n  age: number;\n}</code></pre>",
+          content: `## Type Aliases vs Interfaces
+
+Both type aliases and interfaces let you define custom types, but they have subtle differences.
+
+### Type Alias
+
+\`\`\`typescript
+type User = {
+  name: string;
+  age: number;
+};
+\`\`\`
+
+### Interface
+
+\`\`\`typescript
+interface User {
+  name: string;
+  age: number;
+}
+\`\`\``,
         },
         {
           title: "Union and Intersection Types",
           duration: 14,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Union and Intersection Types</h2><p>Combine types in powerful ways using unions (<code>|</code>) and intersections (<code>&</code>).</p><pre><code class=\"language-typescript\">type StringOrNumber = string | number;\ntype Named = { name: string };\ntype Aged = { age: number };\ntype Person = Named & Aged;</code></pre>",
+          content: `## Union and Intersection Types
+
+Combine types in powerful ways using unions (\`|\`) and intersections (\`&\`).
+
+\`\`\`typescript
+type StringOrNumber = string | number;
+type Named = { name: string };
+type Aged = { age: number };
+type Person = Named & Aged;
+\`\`\``,
         },
       ],
     },
@@ -384,25 +460,66 @@ By the end of this course, you'll understand why TypeScript has become the defau
           title: "Function Types",
           duration: 11,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Typing Functions</h2><p>TypeScript lets you type function parameters, return values, and even the function itself.</p><pre><code class=\"language-typescript\">function add(a: number, b: number): number {\n  return a + b;\n}\n\nconst multiply: (a: number, b: number) => number = (a, b) => a * b;</code></pre>",
+          content: `## Typing Functions
+
+TypeScript lets you type function parameters, return values, and even the function itself.
+
+\`\`\`typescript
+function add(a: number, b: number): number {
+  return a + b;
+}
+
+const multiply: (a: number, b: number) => number = (a, b) => a * b;
+\`\`\``,
         },
         {
           title: "Generics Basics",
           duration: 20,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Introduction to Generics</h2><p>Generics let you write reusable code that works with multiple types while maintaining type safety.</p><pre><code class=\"language-typescript\">function identity&lt;T&gt;(value: T): T {\n  return value;\n}\n\nconst str = identity('hello'); // string\nconst num = identity(42); // number</code></pre>",
+          content: `## Introduction to Generics
+
+Generics let you write reusable code that works with multiple types while maintaining type safety.
+
+\`\`\`typescript
+function identity<T>(value: T): T {
+  return value;
+}
+
+const str = identity('hello'); // string
+const num = identity(42); // number
+\`\`\``,
         },
         {
           title: "Generic Constraints",
           duration: 16,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Constraining Generics</h2><p>Use <code>extends</code> to limit what types a generic can accept.</p><pre><code class=\"language-typescript\">function getLength&lt;T extends { length: number }&gt;(item: T): number {\n  return item.length;\n}\n\ngetLength('hello'); // OK\ngetLength([1, 2, 3]); // OK\n// getLength(42); // Error!</code></pre>",
+          content: `## Constraining Generics
+
+Use \`extends\` to limit what types a generic can accept.
+
+\`\`\`typescript
+function getLength<T extends { length: number }>(item: T): number {
+  return item.length;
+}
+
+getLength('hello'); // OK
+getLength([1, 2, 3]); // OK
+// getLength(42); // Error!
+\`\`\``,
         },
         {
           title: "Utility Types",
           duration: 15,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Built-in Utility Types</h2><p>TypeScript provides several utility types for common type transformations.</p><ul><li><code>Partial&lt;T&gt;</code> — makes all properties optional</li><li><code>Required&lt;T&gt;</code> — makes all properties required</li><li><code>Pick&lt;T, K&gt;</code> — selects specific properties</li><li><code>Omit&lt;T, K&gt;</code> — excludes specific properties</li><li><code>Record&lt;K, V&gt;</code> — creates an object type with keys K and values V</li></ul>",
+          content: `## Built-in Utility Types
+
+TypeScript provides several utility types for common type transformations.
+
+- \`Partial<T>\` — makes all properties optional
+- \`Required<T>\` — makes all properties required
+- \`Pick<T, K>\` — selects specific properties
+- \`Omit<T, K>\` — excludes specific properties
+- \`Record<K, V>\` — creates an object type with keys K and values V`,
         },
       ],
     },
@@ -413,31 +530,91 @@ By the end of this course, you'll understand why TypeScript has become the defau
           title: "Discriminated Unions",
           duration: 14,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Discriminated Unions</h2><p>A pattern that combines union types with literal types to create type-safe tagged unions.</p><pre><code class=\"language-typescript\">type Shape =\n  | { kind: 'circle'; radius: number }\n  | { kind: 'rectangle'; width: number; height: number };\n\nfunction area(shape: Shape): number {\n  switch (shape.kind) {\n    case 'circle': return Math.PI * shape.radius ** 2;\n    case 'rectangle': return shape.width * shape.height;\n  }\n}</code></pre>",
+          content: `## Discriminated Unions
+
+A pattern that combines union types with literal types to create type-safe tagged unions.
+
+\`\`\`typescript
+type Shape =
+  | { kind: 'circle'; radius: number }
+  | { kind: 'rectangle'; width: number; height: number };
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case 'circle': return Math.PI * shape.radius ** 2;
+    case 'rectangle': return shape.width * shape.height;
+  }
+}
+\`\`\``,
         },
         {
           title: "Type Guards and Narrowing",
           duration: 13,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Type Guards</h2><p>Type guards are expressions that narrow a type within a conditional block.</p><pre><code class=\"language-typescript\">function isString(value: unknown): value is string {\n  return typeof value === 'string';\n}\n\nfunction process(value: string | number) {\n  if (isString(value)) {\n    console.log(value.toUpperCase()); // string\n  } else {\n    console.log(value.toFixed(2)); // number\n  }\n}</code></pre>",
+          content: `## Type Guards
+
+Type guards are expressions that narrow a type within a conditional block.
+
+\`\`\`typescript
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function process(value: string | number) {
+  if (isString(value)) {
+    console.log(value.toUpperCase()); // string
+  } else {
+    console.log(value.toFixed(2)); // number
+  }
+}
+\`\`\``,
         },
         {
           title: "Mapped Types",
           duration: 17,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Mapped Types</h2><p>Create new types by transforming each property of an existing type.</p><pre><code class=\"language-typescript\">type Readonly&lt;T&gt; = {\n  readonly [K in keyof T]: T[K];\n};\n\ntype Optional&lt;T&gt; = {\n  [K in keyof T]?: T[K];\n};</code></pre>",
+          content: `## Mapped Types
+
+Create new types by transforming each property of an existing type.
+
+\`\`\`typescript
+type Readonly<T> = {
+  readonly [K in keyof T]: T[K];
+};
+
+type Optional<T> = {
+  [K in keyof T]?: T[K];
+};
+\`\`\``,
         },
         {
           title: "Conditional Types",
           duration: 19,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Conditional Types</h2><p>Types that depend on a condition, similar to ternary expressions but at the type level.</p><pre><code class=\"language-typescript\">type IsString&lt;T&gt; = T extends string ? true : false;\n\ntype A = IsString&lt;'hello'&gt;; // true\ntype B = IsString&lt;42&gt;; // false</code></pre>",
+          content: `## Conditional Types
+
+Types that depend on a condition, similar to ternary expressions but at the type level.
+
+\`\`\`typescript
+type IsString<T> = T extends string ? true : false;
+
+type A = IsString<'hello'>; // true
+type B = IsString<42>; // false
+\`\`\``,
         },
         {
           title: "Template Literal Types",
           duration: 10,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Template Literal Types</h2><p>Construct string types using template literal syntax.</p><pre><code class=\"language-typescript\">type Color = 'red' | 'blue' | 'green';\ntype CSSProperty = `color-${Color}`;\n// 'color-red' | 'color-blue' | 'color-green'</code></pre>",
+          content: `## Template Literal Types
+
+Construct string types using template literal syntax.
+
+\`\`\`typescript
+type Color = 'red' | 'blue' | 'green';
+type CSSProperty = \\\`color-\\\${Color}\\\`;
+// 'color-red' | 'color-blue' | 'color-green'
+\`\`\``,
         },
       ],
     },
@@ -448,18 +625,56 @@ By the end of this course, you'll understand why TypeScript has become the defau
           title: "TypeScript with React",
           duration: 22,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>TypeScript + React</h2><p>Learn how to use TypeScript effectively in React applications.</p><pre><code class=\"language-typescript\">interface ButtonProps {\n  label: string;\n  onClick: () => void;\n  variant?: 'primary' | 'secondary';\n}\n\nfunction Button({ label, onClick, variant = 'primary' }: ButtonProps) {\n  return &lt;button onClick={onClick} className={variant}&gt;{label}&lt;/button&gt;;\n}</code></pre>",
+          content: `## TypeScript + React
+
+Learn how to use TypeScript effectively in React applications.
+
+\`\`\`typescript
+interface ButtonProps {
+  label: string;
+  onClick: () => void;
+  variant?: 'primary' | 'secondary';
+}
+
+function Button({ label, onClick, variant = 'primary' }: ButtonProps) {
+  return <button onClick={onClick} className={variant}>{label}</button>;
+}
+\`\`\``,
         },
         {
           title: "Error Handling Patterns",
           duration: 14,
           videoUrl: "https://www.youtube.com/watch?v=zQnBQ4tB3ZA",
-          content: "<h2>Error Handling in TypeScript</h2><p>Strategies for handling errors in a type-safe way.</p><pre><code class=\"language-typescript\">type Result&lt;T, E = Error&gt; =\n  | { ok: true; value: T }\n  | { ok: false; error: E };\n\nfunction divide(a: number, b: number): Result&lt;number&gt; {\n  if (b === 0) return { ok: false, error: new Error('Division by zero') };\n  return { ok: true, value: a / b };\n}</code></pre>",
+          content: `## Error Handling in TypeScript
+
+Strategies for handling errors in a type-safe way.
+
+\`\`\`typescript
+type Result<T, E = Error> =
+  | { ok: true; value: T }
+  | { ok: false; error: E };
+
+function divide(a: number, b: number): Result<number> {
+  if (b === 0) return { ok: false, error: new Error('Division by zero') };
+  return { ok: true, value: a / b };
+}
+\`\`\``,
         },
         {
           title: "Course Wrap-Up and Next Steps",
           duration: 8,
-          content: "<h2>Congratulations!</h2><p>You've completed the Introduction to TypeScript course. Here's what we covered:</p><ul><li>TypeScript fundamentals and type system</li><li>Functions, generics, and utility types</li><li>Advanced patterns like discriminated unions and mapped types</li><li>Real-world usage with React</li></ul><h3>Next Steps</h3><p>Practice by converting an existing JavaScript project to TypeScript. Start with strict mode enabled and work through the errors one by one.</p>",
+          content: `## Congratulations!
+
+You've completed the Introduction to TypeScript course. Here's what we covered:
+
+- TypeScript fundamentals and type system
+- Functions, generics, and utility types
+- Advanced patterns like discriminated unions and mapped types
+- Real-world usage with React
+
+### Next Steps
+
+Practice by converting an existing JavaScript project to TypeScript. Start with strict mode enabled and work through the errors one by one.`,
         },
       ],
     },
@@ -565,25 +780,70 @@ Every lesson is focused and practical. No 45-minute lectures where 40 minutes ar
           title: "What is a REST API?",
           duration: 10,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>REST API Fundamentals</h2><p>REST (Representational State Transfer) is an architectural style for designing networked applications. RESTful APIs use HTTP methods to perform CRUD operations on resources.</p><h3>Key Principles</h3><ul><li>Stateless communication</li><li>Resource-based URLs</li><li>Standard HTTP methods (GET, POST, PUT, DELETE)</li><li>JSON as the data format</li></ul>",
+          content: `## REST API Fundamentals
+
+REST (Representational State Transfer) is an architectural style for designing networked applications. RESTful APIs use HTTP methods to perform CRUD operations on resources.
+
+### Key Principles
+
+- Stateless communication
+- Resource-based URLs
+- Standard HTTP methods (GET, POST, PUT, DELETE)
+- JSON as the data format`,
         },
         {
           title: "Setting Up Express",
           duration: 15,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Express.js Setup</h2><p>Express is the most popular Node.js web framework for building APIs.</p><pre><code class=\"language-javascript\">import express from 'express';\n\nconst app = express();\napp.use(express.json());\n\napp.get('/api/health', (req, res) => {\n  res.json({ status: 'ok' });\n});\n\napp.listen(3000, () => console.log('Server running on port 3000'));</code></pre>",
+          content: `## Express.js Setup
+
+Express is the most popular Node.js web framework for building APIs.
+
+\`\`\`javascript
+import express from 'express';
+
+const app = express();
+app.use(express.json());
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.listen(3000, () => console.log('Server running on port 3000'));
+\`\`\``,
         },
         {
           title: "HTTP Methods and Status Codes",
           duration: 12,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>HTTP Methods</h2><ul><li><strong>GET</strong> — Retrieve resources (200 OK)</li><li><strong>POST</strong> — Create resources (201 Created)</li><li><strong>PUT</strong> — Update resources (200 OK)</li><li><strong>DELETE</strong> — Remove resources (204 No Content)</li></ul><h3>Common Status Codes</h3><ul><li>200 OK, 201 Created, 204 No Content</li><li>400 Bad Request, 401 Unauthorized, 404 Not Found</li><li>500 Internal Server Error</li></ul>",
+          content: `## HTTP Methods
+
+- **GET** — Retrieve resources (200 OK)
+- **POST** — Create resources (201 Created)
+- **PUT** — Update resources (200 OK)
+- **DELETE** — Remove resources (204 No Content)
+
+### Common Status Codes
+
+- 200 OK, 201 Created, 204 No Content
+- 400 Bad Request, 401 Unauthorized, 404 Not Found
+- 500 Internal Server Error`,
         },
         {
           title: "Request and Response Objects",
           duration: 14,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Working with Request & Response</h2><p>Express provides rich request and response objects for handling HTTP communication.</p><pre><code class=\"language-javascript\">app.post('/api/users', (req, res) => {\n  const { name, email } = req.body;\n  // ... create user\n  res.status(201).json({ id: 1, name, email });\n});</code></pre>",
+          content: `## Working with Request & Response
+
+Express provides rich request and response objects for handling HTTP communication.
+
+\`\`\`javascript
+app.post('/api/users', (req, res) => {
+  const { name, email } = req.body;
+  // ... create user
+  res.status(201).json({ id: 1, name, email });
+});
+\`\`\``,
         },
       ],
     },
@@ -594,25 +854,82 @@ Every lesson is focused and practical. No 45-minute lectures where 40 minutes ar
           title: "Express Router",
           duration: 13,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Organizing Routes</h2><p>Use Express Router to organize your API endpoints into logical groups.</p><pre><code class=\"language-javascript\">import { Router } from 'express';\n\nconst userRouter = Router();\nuserRouter.get('/', getUsers);\nuserRouter.get('/:id', getUserById);\nuserRouter.post('/', createUser);\n\napp.use('/api/users', userRouter);</code></pre>",
+          content: `## Organizing Routes
+
+Use Express Router to organize your API endpoints into logical groups.
+
+\`\`\`javascript
+import { Router } from 'express';
+
+const userRouter = Router();
+userRouter.get('/', getUsers);
+userRouter.get('/:id', getUserById);
+userRouter.post('/', createUser);
+
+app.use('/api/users', userRouter);
+\`\`\``,
         },
         {
           title: "Custom Middleware",
           duration: 16,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Middleware in Express</h2><p>Middleware functions have access to the request, response, and next function in the request-response cycle.</p><pre><code class=\"language-javascript\">function logger(req, res, next) {\n  console.log(`${req.method} ${req.url}`);\n  next();\n}\n\nfunction authenticate(req, res, next) {\n  const token = req.headers.authorization;\n  if (!token) return res.status(401).json({ error: 'Unauthorized' });\n  next();\n}</code></pre>",
+          content: `## Middleware in Express
+
+Middleware functions have access to the request, response, and next function in the request-response cycle.
+
+\`\`\`javascript
+function logger(req, res, next) {
+  console.log(\\\`\\\${req.method} \\\${req.url}\\\`);
+  next();
+}
+
+function authenticate(req, res, next) {
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  next();
+}
+\`\`\``,
         },
         {
           title: "Error Handling Middleware",
           duration: 11,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Centralized Error Handling</h2><p>Express supports error-handling middleware with four parameters.</p><pre><code class=\"language-javascript\">app.use((err, req, res, next) => {\n  console.error(err.stack);\n  res.status(err.status || 500).json({\n    error: err.message || 'Internal Server Error'\n  });\n});</code></pre>",
+          content: `## Centralized Error Handling
+
+Express supports error-handling middleware with four parameters.
+
+\`\`\`javascript
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error'
+  });
+});
+\`\`\``,
         },
         {
           title: "Validation with Zod",
           duration: 18,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Request Validation</h2><p>Use Zod to validate request bodies, query parameters, and URL parameters.</p><pre><code class=\"language-javascript\">import { z } from 'zod';\n\nconst CreateUserSchema = z.object({\n  name: z.string().min(1),\n  email: z.string().email(),\n  age: z.number().int().positive().optional()\n});\n\napp.post('/api/users', (req, res) => {\n  const result = CreateUserSchema.safeParse(req.body);\n  if (!result.success) return res.status(400).json(result.error);\n  // ... create user with result.data\n});</code></pre>",
+          content: `## Request Validation
+
+Use Zod to validate request bodies, query parameters, and URL parameters.
+
+\`\`\`javascript
+import { z } from 'zod';
+
+const CreateUserSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  age: z.number().int().positive().optional()
+});
+
+app.post('/api/users', (req, res) => {
+  const result = CreateUserSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json(result.error);
+  // ... create user with result.data
+});
+\`\`\``,
         },
       ],
     },
@@ -623,25 +940,77 @@ Every lesson is focused and practical. No 45-minute lectures where 40 minutes ar
           title: "Connecting to a Database",
           duration: 14,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Database Setup</h2><p>Learn how to connect your API to a database using an ORM.</p><pre><code class=\"language-javascript\">import { drizzle } from 'drizzle-orm/better-sqlite3';\nimport Database from 'better-sqlite3';\n\nconst sqlite = new Database('app.db');\nconst db = drizzle(sqlite);</code></pre>",
+          content: `## Database Setup
+
+Learn how to connect your API to a database using an ORM.
+
+\`\`\`javascript
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import Database from 'better-sqlite3';
+
+const sqlite = new Database('app.db');
+const db = drizzle(sqlite);
+\`\`\``,
         },
         {
           title: "CRUD Operations",
           duration: 20,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Building CRUD Endpoints</h2><p>Implement Create, Read, Update, Delete operations for your API resources.</p><pre><code class=\"language-javascript\">// Create\napp.post('/api/posts', async (req, res) => {\n  const post = await db.insert(posts).values(req.body).returning();\n  res.status(201).json(post);\n});\n\n// Read\napp.get('/api/posts/:id', async (req, res) => {\n  const post = await db.select().from(posts).where(eq(posts.id, req.params.id));\n  if (!post) return res.status(404).json({ error: 'Not found' });\n  res.json(post);\n});</code></pre>",
+          content: `## Building CRUD Endpoints
+
+Implement Create, Read, Update, Delete operations for your API resources.
+
+\`\`\`javascript
+// Create
+app.post('/api/posts', async (req, res) => {
+  const post = await db.insert(posts).values(req.body).returning();
+  res.status(201).json(post);
+});
+
+// Read
+app.get('/api/posts/:id', async (req, res) => {
+  const post = await db.select().from(posts).where(eq(posts.id, req.params.id));
+  if (!post) return res.status(404).json({ error: 'Not found' });
+  res.json(post);
+});
+\`\`\``,
         },
         {
           title: "Pagination and Filtering",
           duration: 15,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Pagination</h2><p>Implement cursor-based and offset-based pagination for list endpoints.</p><pre><code class=\"language-javascript\">app.get('/api/posts', async (req, res) => {\n  const page = parseInt(req.query.page) || 1;\n  const limit = parseInt(req.query.limit) || 10;\n  const offset = (page - 1) * limit;\n\n  const results = await db.select().from(posts)\n    .limit(limit).offset(offset);\n  res.json({ data: results, page, limit });\n});</code></pre>",
+          content: `## Pagination
+
+Implement cursor-based and offset-based pagination for list endpoints.
+
+\`\`\`javascript
+app.get('/api/posts', async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = (page - 1) * limit;
+
+  const results = await db.select().from(posts)
+    .limit(limit).offset(offset);
+  res.json({ data: results, page, limit });
+});
+\`\`\``,
         },
         {
           title: "Transactions",
           duration: 12,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Database Transactions</h2><p>Use transactions to ensure data consistency when multiple operations must succeed or fail together.</p><pre><code class=\"language-javascript\">await db.transaction(async (tx) => {\n  const [order] = await tx.insert(orders).values({ userId, total }).returning();\n  for (const item of items) {\n    await tx.insert(orderItems).values({ orderId: order.id, ...item });\n  }\n});</code></pre>",
+          content: `## Database Transactions
+
+Use transactions to ensure data consistency when multiple operations must succeed or fail together.
+
+\`\`\`javascript
+await db.transaction(async (tx) => {
+  const [order] = await tx.insert(orders).values({ userId, total }).returning();
+  for (const item of items) {
+    await tx.insert(orderItems).values({ orderId: order.id, ...item });
+  }
+});
+\`\`\``,
         },
       ],
     },
@@ -652,19 +1021,56 @@ Every lesson is focused and practical. No 45-minute lectures where 40 minutes ar
           title: "JWT Authentication",
           duration: 22,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>JSON Web Tokens</h2><p>Implement JWT-based authentication for your API.</p><pre><code class=\"language-javascript\">import jwt from 'jsonwebtoken';\n\napp.post('/api/login', async (req, res) => {\n  const user = await findUser(req.body.email);\n  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {\n    expiresIn: '7d'\n  });\n  res.json({ token });\n});</code></pre>",
+          content: `## JSON Web Tokens
+
+Implement JWT-based authentication for your API.
+
+\`\`\`javascript
+import jwt from 'jsonwebtoken';
+
+app.post('/api/login', async (req, res) => {
+  const user = await findUser(req.body.email);
+  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+    expiresIn: '7d'
+  });
+  res.json({ token });
+});
+\`\`\``,
         },
         {
           title: "Rate Limiting",
           duration: 10,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Rate Limiting</h2><p>Protect your API from abuse by limiting the number of requests per client.</p><pre><code class=\"language-javascript\">import rateLimit from 'express-rate-limit';\n\nconst limiter = rateLimit({\n  windowMs: 15 * 60 * 1000, // 15 minutes\n  max: 100 // limit each IP to 100 requests per window\n});\n\napp.use('/api/', limiter);</code></pre>",
+          content: `## Rate Limiting
+
+Protect your API from abuse by limiting the number of requests per client.
+
+\`\`\`javascript
+import rateLimit from 'express-rate-limit';
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per window
+});
+
+app.use('/api/', limiter);
+\`\`\``,
         },
         {
           title: "CORS and Security Headers",
           duration: 11,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>CORS Configuration</h2><p>Configure Cross-Origin Resource Sharing for your API.</p><pre><code class=\"language-javascript\">import cors from 'cors';\nimport helmet from 'helmet';\n\napp.use(cors({ origin: 'https://yourapp.com' }));\napp.use(helmet());</code></pre>",
+          content: `## CORS Configuration
+
+Configure Cross-Origin Resource Sharing for your API.
+
+\`\`\`javascript
+import cors from 'cors';
+import helmet from 'helmet';
+
+app.use(cors({ origin: 'https://yourapp.com' }));
+app.use(helmet());
+\`\`\``,
         },
       ],
     },
@@ -675,30 +1081,93 @@ Every lesson is focused and practical. No 45-minute lectures where 40 minutes ar
           title: "Unit Testing API Routes",
           duration: 18,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Testing with Vitest and Supertest</h2><p>Write tests for your API endpoints using Vitest and Supertest.</p><pre><code class=\"language-javascript\">import { describe, it, expect } from 'vitest';\nimport request from 'supertest';\nimport app from '../app';\n\ndescribe('GET /api/users', () => {\n  it('returns a list of users', async () => {\n    const res = await request(app).get('/api/users');\n    expect(res.status).toBe(200);\n    expect(res.body).toBeInstanceOf(Array);\n  });\n});</code></pre>",
+          content: `## Testing with Vitest and Supertest
+
+Write tests for your API endpoints using Vitest and Supertest.
+
+\`\`\`javascript
+import { describe, it, expect } from 'vitest';
+import request from 'supertest';
+import app from '../app';
+
+describe('GET /api/users', () => {
+  it('returns a list of users', async () => {
+    const res = await request(app).get('/api/users');
+    expect(res.status).toBe(200);
+    expect(res.body).toBeInstanceOf(Array);
+  });
+});
+\`\`\``,
         },
         {
           title: "Integration Testing",
           duration: 16,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Integration Tests</h2><p>Test complete request flows including database interactions.</p><pre><code class=\"language-javascript\">describe('User CRUD', () => {\n  it('creates and retrieves a user', async () => {\n    const createRes = await request(app)\n      .post('/api/users')\n      .send({ name: 'Test', email: 'test@test.com' });\n    expect(createRes.status).toBe(201);\n\n    const getRes = await request(app)\n      .get(`/api/users/${createRes.body.id}`);\n    expect(getRes.body.name).toBe('Test');\n  });\n});</code></pre>",
+          content: `## Integration Tests
+
+Test complete request flows including database interactions.
+
+\`\`\`javascript
+describe('User CRUD', () => {
+  it('creates and retrieves a user', async () => {
+    const createRes = await request(app)
+      .post('/api/users')
+      .send({ name: 'Test', email: 'test@test.com' });
+    expect(createRes.status).toBe(201);
+
+    const getRes = await request(app)
+      .get(\\\`/api/users/\\\${createRes.body.id}\\\`);
+    expect(getRes.body.name).toBe('Test');
+  });
+});
+\`\`\``,
         },
         {
           title: "Environment Variables and Config",
           duration: 9,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Configuration Management</h2><p>Manage environment-specific settings with environment variables.</p><pre><code class=\"language-javascript\">const config = {\n  port: process.env.PORT || 3000,\n  dbUrl: process.env.DATABASE_URL || 'sqlite:app.db',\n  jwtSecret: process.env.JWT_SECRET || 'dev-secret'\n};</code></pre>",
+          content: `## Configuration Management
+
+Manage environment-specific settings with environment variables.
+
+\`\`\`javascript
+const config = {
+  port: process.env.PORT || 3000,
+  dbUrl: process.env.DATABASE_URL || 'sqlite:app.db',
+  jwtSecret: process.env.JWT_SECRET || 'dev-secret'
+};
+\`\`\``,
         },
         {
           title: "Deploying Your API",
           duration: 14,
           videoUrl: "https://www.youtube.com/watch?v=lsMQRaeKNDk",
-          content: "<h2>Deployment</h2><p>Deploy your Node.js API to production. We'll cover various hosting options and best practices.</p><h3>Deployment Checklist</h3><ul><li>Set NODE_ENV=production</li><li>Use a process manager (PM2)</li><li>Set up logging and monitoring</li><li>Configure HTTPS</li><li>Set up CI/CD pipeline</li></ul>",
+          content: `## Deployment
+
+Deploy your Node.js API to production. We'll cover various hosting options and best practices.
+
+### Deployment Checklist
+
+- Set NODE_ENV=production
+- Use a process manager (PM2)
+- Set up logging and monitoring
+- Configure HTTPS
+- Set up CI/CD pipeline`,
         },
         {
           title: "Course Wrap-Up",
           duration: 7,
-          content: "<h2>Congratulations!</h2><p>You've completed the Building REST APIs course. You now have the skills to build, test, and deploy production-ready APIs with Node.js.</p><h3>Key Takeaways</h3><ul><li>RESTful design principles</li><li>Express routing and middleware</li><li>Database integration and transactions</li><li>Authentication and security</li><li>Testing and deployment</li></ul>",
+          content: `## Congratulations!
+
+You've completed the Building REST APIs course. You now have the skills to build, test, and deploy production-ready APIs with Node.js.
+
+### Key Takeaways
+
+- RESTful design principles
+- Express routing and middleware
+- Database integration and transactions
+- Authentication and security
+- Testing and deployment`,
         },
       ],
     },
