@@ -42,6 +42,10 @@ import { formatDuration, formatPrice } from "~/lib/utils";
 import { renderMarkdown } from "~/lib/markdown.server";
 import { resolveCountry } from "~/lib/country.server";
 import { calculatePppPrice, getCountryTierInfo } from "~/lib/ppp";
+import { getCourseRatingStats, getUserRating, upsertRating } from "~/services/ratingService";
+import { parseFormData } from "~/lib/validation";
+import { z } from "zod";
+import { StarDisplay, StarRating } from "~/components/star-rating";
 
 export function meta({ data: loaderData }: Route.MetaArgs) {
   const title = loaderData?.course?.title ?? "Course";
@@ -102,6 +106,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     : courseWithDetails.price;
   const tierInfo = getCountryTierInfo(country);
 
+  const ratingStats = getCourseRatingStats(course.id);
+  let userRating: number | null = null;
+  if (currentUserId && enrolled) {
+    const existing = getUserRating(currentUserId, course.id);
+    userRating = existing?.rating ?? null;
+  }
+
   return {
     course: courseWithDetails,
     salesCopyHtml,
@@ -113,10 +124,45 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     currentUserId,
     pppPrice,
     tierInfo,
+    ratingStats,
+    userRating,
   };
 }
 
-// No action — enrollment is handled via the purchase confirmation page
+const courseDetailActionSchema = z.discriminatedUnion("intent", [
+  z.object({
+    intent: z.literal("rate-course"),
+    rating: z.coerce.number().int().min(1).max(5),
+  }),
+]);
+
+export async function action({ params, request }: Route.ActionArgs) {
+  const currentUserId = await getCurrentUserId(request);
+  if (!currentUserId) {
+    throw data("You must be logged in.", { status: 401 });
+  }
+
+  const course = getCourseBySlug(params.slug);
+  if (!course) {
+    throw data("Course not found", { status: 404 });
+  }
+
+  if (!isUserEnrolled(currentUserId, course.id)) {
+    throw data("You must be enrolled to rate this course.", { status: 403 });
+  }
+
+  const formData = await request.formData();
+  const parsed = parseFormData(formData, courseDetailActionSchema);
+
+  if (!parsed.success) {
+    return data({ error: "Invalid rating." }, { status: 400 });
+  }
+
+  if (parsed.data.intent === "rate-course") {
+    upsertRating(currentUserId, course.id, parsed.data.rating);
+    return { ok: true };
+  }
+}
 
 export function HydrateFallback() {
   return (
@@ -181,6 +227,8 @@ export default function CourseDetail({ loaderData }: Route.ComponentProps) {
     currentUserId,
     pppPrice,
     tierInfo,
+    ratingStats,
+    userRating,
   } = loaderData;
   const isInstructor = currentUserId === course.instructorId;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -320,6 +368,7 @@ export default function CourseDetail({ loaderData }: Route.ComponentProps) {
               {formatDuration(totalDuration, true, false, false)} total
             </span>
           )}
+          <StarDisplay rating={ratingStats.averageRating} count={ratingStats.ratingCount} />
         </div>
       </div>
 
@@ -413,6 +462,13 @@ export default function CourseDetail({ loaderData }: Route.ComponentProps) {
                       Buy More Seats
                     </Button>
                   </Link>
+                  <div className="border-t pt-4">
+                    <p className="mb-2 text-sm font-medium">Rate this course</p>
+                    <StarRating
+                      courseSlug={course.slug}
+                      currentRating={userRating}
+                    />
+                  </div>
                 </>
               ) : (
                 enrollButton

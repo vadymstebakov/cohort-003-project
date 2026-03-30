@@ -15,6 +15,8 @@ import { getUserEnrolledCourses } from "~/services/enrollmentService";
 import { calculateProgress, getCompletedLessonCount } from "~/services/progressService";
 import { resolveCountry } from "~/lib/country.server";
 import { calculatePppPrice } from "~/lib/ppp";
+import { getCourseRatingStatsMap } from "~/services/ratingService";
+import { StarDisplay } from "~/components/star-rating";
 
 export function meta() {
   return [
@@ -55,17 +57,23 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
+  const courseIds = courses.map((c) => c.id);
+  const ratingStatsMap = getCourseRatingStatsMap(courseIds);
+
   const coursesWithLessonCount = courses.map((course) => {
     const userProgress = progressMap.get(course.id);
     const pppPrice = course.pppEnabled
       ? calculatePppPrice(course.price, country)
       : course.price;
+    const ratingStats = ratingStatsMap.get(course.id);
     return {
       ...course,
       lessonCount: getLessonCountForCourse(course.id),
       progress: userProgress?.progress ?? null,
       completedLessons: userProgress?.completedLessons ?? null,
       pppPrice,
+      averageRating: ratingStats?.averageRating ?? 0,
+      ratingCount: ratingStats?.ratingCount ?? 0,
     };
   });
 
@@ -235,6 +243,7 @@ export default function CourseCatalog({ loaderData }: Route.ComponentProps) {
                     />
                     {course.instructorName}
                   </span>
+                  <StarDisplay rating={course.averageRating} count={course.ratingCount} />
                   <span className="font-semibold text-foreground">
                     {course.pppPrice < course.price ? (
                       <span className="flex items-center gap-1.5">

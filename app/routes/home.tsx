@@ -7,6 +7,8 @@ import { buildCourseQuery, getLessonCountForCourse } from "~/services/courseServ
 import { getAllCategories } from "~/services/categoryService";
 import { CourseStatus } from "~/db/schema";
 import { BookOpen, GraduationCap, Users, ArrowRight, User, Moon, Sun } from "lucide-react";
+import { getCourseRatingStatsMap } from "~/services/ratingService";
+import { StarDisplay } from "~/components/star-rating";
 import { CourseImage } from "~/components/course-image";
 import { DevUI } from "~/components/dev-ui";
 import { getAllUsers, getUserById } from "~/services/userService";
@@ -22,10 +24,18 @@ export function meta({}: Route.MetaArgs) {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const courses = buildCourseQuery(null, null, CourseStatus.Published, "newest", 50, 0);
-  const featured = courses.slice(0, 3).map((course) => ({
-    ...course,
-    lessonCount: getLessonCountForCourse(course.id),
-  }));
+  const featuredSlice = courses.slice(0, 3);
+  const featuredIds = featuredSlice.map((c) => c.id);
+  const ratingStatsMap = getCourseRatingStatsMap(featuredIds);
+  const featured = featuredSlice.map((course) => {
+    const ratingStats = ratingStatsMap.get(course.id);
+    return {
+      ...course,
+      lessonCount: getLessonCountForCourse(course.id),
+      averageRating: ratingStats?.averageRating ?? 0,
+      ratingCount: ratingStats?.ratingCount ?? 0,
+    };
+  });
   const categories = getAllCategories();
   const users = getAllUsers();
   const currentUserId = await getCurrentUserId(request);
@@ -192,6 +202,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                       <User className="size-3" />
                       {course.instructorName ?? "Instructor"}
                     </span>
+                    <StarDisplay rating={course.averageRating} count={course.ratingCount} />
                     <span className="flex items-center gap-1">
                       <BookOpen className="size-3" />
                       {course.lessonCount} lessons
