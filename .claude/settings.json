@@ -2,5 +2,14 @@
   "statusLine": {
     "type": "command",
     "command": "npx ccstatusline@latest"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(pnpm build)",
+      "Bash(pnpm dev)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm test*)",
+      "Bash(pnpm db*)"
+    ]
   }
 }

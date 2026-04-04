@@ -45,7 +45,7 @@ import { resolveCountry } from "~/lib/country.server";
 import { calculatePppPrice, getCountryTierInfo } from "~/lib/ppp";
 import { getCourseRatingStats, getUserRating, upsertRating } from "~/services/ratingService";
 import { parseFormData } from "~/lib/validation";
-import { z } from "zod";
+import * as v from "valibot";
 import { StarDisplay, StarRating } from "~/components/star-rating";
 import { getBookmarkedLessonIds } from "~/services/bookmarkService";
 
@@ -134,10 +134,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   };
 }
 
-const courseDetailActionSchema = z.discriminatedUnion("intent", [
-  z.object({
-    intent: z.literal("rate-course"),
-    rating: z.coerce.number().int().min(1).max(5),
+const courseDetailActionSchema = v.variant("intent", [
+  v.object({
+    intent: v.literal("rate-course"),
+    rating: v.pipe(v.unknown(), v.transform(Number), v.number(), v.integer(), v.minValue(1), v.maxValue(5)),
   }),
 ]);
 
