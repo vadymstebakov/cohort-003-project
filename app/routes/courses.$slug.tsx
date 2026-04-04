@@ -27,6 +27,7 @@ import {
 } from "~/components/ui/tabs";
 import {
   AlertTriangle,
+  Bookmark,
   BookOpen,
   CheckCircle2,
   Circle,
@@ -46,6 +47,7 @@ import { getCourseRatingStats, getUserRating, upsertRating } from "~/services/ra
 import { parseFormData } from "~/lib/validation";
 import { z } from "zod";
 import { StarDisplay, StarRating } from "~/components/star-rating";
+import { getBookmarkedLessonIds } from "~/services/bookmarkService";
 
 export function meta({ data: loaderData }: Route.MetaArgs) {
   const title = loaderData?.course?.title ?? "Course";
@@ -75,6 +77,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   let progress = 0;
   let lessonProgressMap: Record<number, string> = {};
   let nextLessonId: number | null = null;
+  let bookmarkedLessonIds: number[] = [];
 
   if (currentUserId) {
     enrolled = isUserEnrolled(currentUserId, course.id);
@@ -92,6 +95,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
       const nextLesson = getNextIncompleteLesson(currentUserId, course.id);
       nextLessonId = nextLesson?.id ?? null;
+      bookmarkedLessonIds = getBookmarkedLessonIds({ userId: currentUserId, courseId: course.id });
     }
   }
 
@@ -109,7 +113,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const ratingStats = getCourseRatingStats(course.id);
   let userRating: number | null = null;
   if (currentUserId && enrolled) {
-    const existing = getUserRating(currentUserId, course.id);
+    const existing = getUserRating({ userId: currentUserId, courseId: course.id });
     userRating = existing?.rating ?? null;
   }
 
@@ -126,6 +130,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     tierInfo,
     ratingStats,
     userRating,
+    bookmarkedLessonIds,
   };
 }
 
@@ -159,7 +164,7 @@ export async function action({ params, request }: Route.ActionArgs) {
   }
 
   if (parsed.data.intent === "rate-course") {
-    upsertRating(currentUserId, course.id, parsed.data.rating);
+    upsertRating({ userId: currentUserId, courseId: course.id, rating: parsed.data.rating });
     return { ok: true };
   }
 }
@@ -229,6 +234,7 @@ export default function CourseDetail({ loaderData }: Route.ComponentProps) {
     tierInfo,
     ratingStats,
     userRating,
+    bookmarkedLessonIds,
   } = loaderData;
   const isInstructor = currentUserId === course.instructorId;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -404,6 +410,7 @@ export default function CourseDetail({ loaderData }: Route.ComponentProps) {
               enrolled={enrolled}
               isInstructor={isInstructor}
               lessonProgressMap={lessonProgressMap}
+              bookmarkedLessonIds={new Set(bookmarkedLessonIds)}
             />
           </div>
         </div>
@@ -511,6 +518,7 @@ function CourseContent({
   enrolled,
   isInstructor,
   lessonProgressMap,
+  bookmarkedLessonIds,
 }: {
   course: {
     id: number;
@@ -528,6 +536,7 @@ function CourseContent({
   enrolled: boolean;
   isInstructor: boolean;
   lessonProgressMap: Record<number, string>;
+  bookmarkedLessonIds: Set<number>;
 }) {
   return (
     <div>
@@ -549,9 +558,12 @@ function CourseContent({
                     {mod.title}
                   </Link>
                 </h3>
-                <p className="text-sm text-muted-foreground">
-                  {mod.lessons.length} lessons
-                </p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>{mod.lessons.length} lessons</span>
+                  {mod.lessons.some((l) => bookmarkedLessonIds.has(l.id)) && (
+                    <Bookmark className="size-3.5 fill-amber-500 text-amber-500" />
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
@@ -612,6 +624,9 @@ function CourseContent({
                                   false
                                 )}
                               </span>
+                            )}
+                            {bookmarkedLessonIds.has(lesson.id) && (
+                              <Bookmark className="size-4 shrink-0 fill-amber-500 text-amber-500" />
                             )}
                           </Link>
                         ) : (

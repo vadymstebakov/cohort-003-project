@@ -99,7 +99,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
     // Get best quiz attempt for each quiz in this course
     const quizScores = lessonQuizzes.map((lq) => {
-      const bestAttempt = getBestAttempt(enrollment.userId, lq.quizId);
+      const bestAttempt = getBestAttempt({ userId: enrollment.userId, quizId: lq.quizId });
       return {
         quizId: lq.quizId,
         quizTitle: lq.quizTitle,

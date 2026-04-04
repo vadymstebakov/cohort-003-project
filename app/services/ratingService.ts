@@ -4,9 +4,9 @@ import { courseRatings } from "~/db/schema";
 
 // ─── Rating Service ───
 // Handles course star ratings: upsert, retrieval, and aggregation.
-// Uses positional parameters (project convention).
 
-export function upsertRating(userId: number, courseId: number, rating: number) {
+export function upsertRating(opts: { userId: number; courseId: number; rating: number }) {
+  const { userId, courseId, rating } = opts;
   const existing = db
     .select()
     .from(courseRatings)
@@ -31,7 +31,8 @@ export function upsertRating(userId: number, courseId: number, rating: number) {
     .get();
 }
 
-export function getUserRating(userId: number, courseId: number) {
+export function getUserRating(opts: { userId: number; courseId: number }) {
+  const { userId, courseId } = opts;
   return db
     .select()
     .from(courseRatings)

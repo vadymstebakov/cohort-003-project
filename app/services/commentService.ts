@@ -4,13 +4,14 @@ import { lessonComments, users } from "~/db/schema";
 
 // ─── Comment Service ───
 // Handles lesson comments: CRUD and retrieval with user info.
-// Uses positional parameters (project convention).
+// Uses object parameters when multiple params share a type.
 
-export function createComment(
-  userId: number,
-  lessonId: number,
-  content: string
-) {
+export function createComment(opts: {
+  userId: number;
+  lessonId: number;
+  content: string;
+}) {
+  const { userId, lessonId, content } = opts;
   return db
     .insert(lessonComments)
     .values({ userId, lessonId, content })
