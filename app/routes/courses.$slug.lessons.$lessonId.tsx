@@ -55,6 +55,14 @@ import { resolveCountry } from "~/lib/country.server";
 import { checkPppAccess, COUNTRIES } from "~/lib/ppp";
 import { findPurchase } from "~/services/purchaseService";
 import { parseFormData, parseParams } from "~/lib/validation";
+import {
+  getCommentsByLesson,
+  createComment,
+  getCommentById,
+  updateComment,
+  deleteComment,
+} from "~/services/commentService";
+import { LessonComments } from "~/components/lesson-comments";
 
 const lessonParamsSchema = z.object({
   slug: z.string().min(1),
@@ -281,6 +289,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     pppBlocked,
     pppBlockedCountry,
     pppPurchaseCountry,
+    comments: enrolled ? getCommentsByLesson(lessonId) : [],
   };
 }
 
@@ -329,6 +338,60 @@ export async function action({ params, request }: Route.ActionArgs) {
     }
 
     return { quizResult: result };
+  }
+
+  if (intent === "add-comment") {
+    const content = formData.get("content");
+    if (!content || typeof content !== "string" || !content.trim()) {
+      return data({ error: "Comment cannot be empty." }, { status: 400 });
+    }
+    if (content.length > 2000) {
+      return data({ error: "Comment is too long." }, { status: 400 });
+    }
+    if (!isUserEnrolled(currentUserId, course.id)) {
+      throw data("You must be enrolled to comment.", { status: 403 });
+    }
+    createComment(currentUserId, lessonId, content.trim());
+    return { success: true };
+  }
+
+  if (intent === "edit-comment") {
+    const commentId = Number(formData.get("commentId"));
+    const content = formData.get("content");
+    if (isNaN(commentId)) {
+      return data({ error: "Invalid comment ID." }, { status: 400 });
+    }
+    if (!content || typeof content !== "string" || !content.trim()) {
+      return data({ error: "Comment cannot be empty." }, { status: 400 });
+    }
+    if (content.length > 2000) {
+      return data({ error: "Comment is too long." }, { status: 400 });
+    }
+    const comment = getCommentById(commentId);
+    if (!comment) {
+      throw data("Comment not found.", { status: 404 });
+    }
+    if (comment.userId !== currentUserId) {
+      throw data("You can only edit your own comments.", { status: 403 });
+    }
+    updateComment(commentId, content.trim());
+    return { success: true };
+  }
+
+  if (intent === "delete-comment") {
+    const commentId = Number(formData.get("commentId"));
+    if (isNaN(commentId)) {
+      return data({ error: "Invalid comment ID." }, { status: 400 });
+    }
+    const comment = getCommentById(commentId);
+    if (!comment) {
+      throw data("Comment not found.", { status: 404 });
+    }
+    if (comment.userId !== currentUserId) {
+      throw data("You can only delete your own comments.", { status: 403 });
+    }
+    deleteComment(commentId);
+    return { success: true };
   }
 
   throw data("Invalid action", { status: 400 });
@@ -382,6 +445,7 @@ export default function LessonViewer({ loaderData }: Route.ComponentProps) {
     pppBlocked,
     pppBlockedCountry,
     pppPurchaseCountry,
+    comments,
   } = loaderData;
   const [autoplay, toggleAutoplay] = useAutoplay();
   const fetcher = useFetcher({ key: `mark-complete-${lesson.id}` });
@@ -590,6 +654,15 @@ export default function LessonViewer({ loaderData }: Route.ComponentProps) {
                 </fetcher.Form>
               )}
             </div>
+          )}
+
+          {enrolled && currentUserId && (
+            <LessonComments
+              comments={comments}
+              currentUserId={currentUserId}
+              canModerate={false}
+              lessonId={lesson.id}
+            />
           )}
 
           {/* Prev/Next Navigation */}

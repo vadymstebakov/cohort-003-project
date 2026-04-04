@@ -18,6 +18,12 @@ import { AlertTriangle, ArrowLeft, ClipboardList, ExternalLink, Github, Save } f
 import { data, isRouteErrorResponse } from "react-router";
 import { z } from "zod";
 import { parseFormData, parseParams } from "~/lib/validation";
+import {
+  getCommentsByLesson,
+  getCommentById,
+  deleteComment,
+} from "~/services/commentService";
+import { LessonComments } from "~/components/lesson-comments";
 
 const instructorLessonParamsSchema = z.object({
   courseId: z.coerce.number().int(),
@@ -89,7 +95,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const quiz = getQuizByLessonId(lessonId);
 
-  return { course, lesson, module: mod, quiz };
+  const comments = getCommentsByLesson(lessonId);
+
+  return { course, lesson, module: mod, quiz, comments, currentUserId };
 }
 
 export async function action({ params, request }: Route.ActionArgs) {
@@ -126,6 +134,21 @@ export async function action({ params, request }: Route.ActionArgs) {
   }
 
   const formData = await request.formData();
+  const intent = formData.get("intent");
+
+  if (intent === "delete-comment") {
+    const commentId = Number(formData.get("commentId"));
+    if (isNaN(commentId)) {
+      return data({ error: "Invalid comment ID." }, { status: 400 });
+    }
+    const comment = getCommentById(commentId);
+    if (!comment) {
+      throw data("Comment not found.", { status: 404 });
+    }
+    deleteComment(commentId);
+    return { success: true };
+  }
+
   const parsed = parseFormData(formData, updateLessonSchema);
 
   if (!parsed.success) {
@@ -150,7 +173,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 export default function InstructorLessonEditor({
   loaderData,
 }: Route.ComponentProps) {
-  const { course, lesson, module: mod, quiz } = loaderData;
+  const { course, lesson, module: mod, quiz, comments, currentUserId } = loaderData;
   const fetcher = useFetcher();
 
   const [content, setContent] = useState(lesson.content ?? "");
@@ -373,6 +396,26 @@ export default function InstructorLessonEditor({
                 {quiz ? "Edit Quiz" : "Create Quiz"}
               </Button>
             </Link>
+          </CardContent>
+        </Card>
+
+        {/* Student Comments */}
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold">
+              Student Comments ({comments.length})
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Review and moderate student comments on this lesson.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <LessonComments
+              comments={comments}
+              currentUserId={currentUserId}
+              canModerate={true}
+              lessonId={lesson.id}
+            />
           </CardContent>
         </Card>
 

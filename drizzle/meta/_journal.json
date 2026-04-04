@@ -29,6 +29,13 @@
       "when": 1774902686492,
       "tag": "0003_vengeful_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1774980455615,
+      "tag": "0004_lively_jetstream",
+      "breakpoints": true
     }
   ]
 }
