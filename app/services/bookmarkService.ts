@@ -43,7 +43,10 @@ export function isLessonBookmarked(opts: { userId: number; lessonId: number }) {
   return !!result;
 }
 
-export function getBookmarkedLessonIds(opts: { userId: number; courseId: number }) {
+export function getBookmarkedLessonIds(opts: {
+  userId: number;
+  courseId: number;
+}) {
   const { userId, courseId } = opts;
   const results = db
     .select({ lessonId: lessonBookmarks.lessonId })
@@ -51,10 +54,7 @@ export function getBookmarkedLessonIds(opts: { userId: number; courseId: number 
     .innerJoin(lessons, eq(lessonBookmarks.lessonId, lessons.id))
     .innerJoin(modules, eq(lessons.moduleId, modules.id))
     .where(
-      and(
-        eq(lessonBookmarks.userId, userId),
-        eq(modules.courseId, courseId)
-      )
+      and(eq(lessonBookmarks.userId, userId), eq(modules.courseId, courseId))
     )
     .all();
 

@@ -104,11 +104,7 @@ function createModule(opts: {
   title: string;
   position: number;
 }) {
-  return testDb
-    .insert(schema.modules)
-    .values(opts)
-    .returning()
-    .get();
+  return testDb.insert(schema.modules).values(opts).returning().get();
 }
 
 function createLesson(opts: {
@@ -116,16 +112,16 @@ function createLesson(opts: {
   title: string;
   position: number;
 }) {
-  return testDb
-    .insert(schema.lessons)
-    .values(opts)
-    .returning()
-    .get();
+  return testDb.insert(schema.lessons).values(opts).returning().get();
 }
 
 function createModuleAndLesson(courseId: number) {
   const mod = createModule({ courseId, title: "Module 1", position: 1 });
-  const lesson = createLesson({ moduleId: mod.id, title: "Lesson 1", position: 1 });
+  const lesson = createLesson({
+    moduleId: mod.id,
+    title: "Lesson 1",
+    position: 1,
+  });
   return { module: mod, lesson };
 }
 
@@ -186,7 +182,9 @@ describe("analyticsService", () => {
 
   describe("getTotalRevenue", () => {
     it("returns 0 when no purchases exist", () => {
-      const revenue = getTotalRevenue({ courseIds: courseIdsFor(base.instructor.id)});
+      const revenue = getTotalRevenue({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(revenue).toBe(0);
     });
 
@@ -198,17 +196,31 @@ describe("analyticsService", () => {
         slug: "course-2",
       });
 
-      createPurchase({ userId: student.id, courseId: base.course.id, pricePaid: 5000 });
-      createPurchase({ userId: student.id, courseId: course2.id, pricePaid: 3000 });
+      createPurchase({
+        userId: student.id,
+        courseId: base.course.id,
+        pricePaid: 5000,
+      });
+      createPurchase({
+        userId: student.id,
+        courseId: course2.id,
+        pricePaid: 3000,
+      });
 
-      const revenue = getTotalRevenue({ courseIds: courseIdsFor(base.instructor.id)});
+      const revenue = getTotalRevenue({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(revenue).toBe(8000);
     });
 
     it("does not include revenue from other instructors", () => {
       const otherInstructor = testDb
         .insert(schema.users)
-        .values({ name: "Other", email: "other@test.com", role: schema.UserRole.Instructor })
+        .values({
+          name: "Other",
+          email: "other@test.com",
+          role: schema.UserRole.Instructor,
+        })
         .returning()
         .get();
 
@@ -219,10 +231,20 @@ describe("analyticsService", () => {
       });
 
       const student = createStudent("S1", "s1@test.com");
-      createPurchase({ userId: student.id, courseId: base.course.id, pricePaid: 5000 });
-      createPurchase({ userId: student.id, courseId: otherCourse.id, pricePaid: 9000 });
+      createPurchase({
+        userId: student.id,
+        courseId: base.course.id,
+        pricePaid: 5000,
+      });
+      createPurchase({
+        userId: student.id,
+        courseId: otherCourse.id,
+        pricePaid: 9000,
+      });
 
-      const revenue = getTotalRevenue({ courseIds: courseIdsFor(base.instructor.id)});
+      const revenue = getTotalRevenue({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(revenue).toBe(5000);
     });
 
@@ -241,7 +263,8 @@ describe("analyticsService", () => {
         createdAt: "2025-03-15T00:00:00.000Z",
       });
 
-      const revenue = getTotalRevenue({ courseIds: courseIdsFor(base.instructor.id),
+      const revenue = getTotalRevenue({
+        courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -253,11 +276,17 @@ describe("analyticsService", () => {
     it("returns 0 for instructor with no courses", () => {
       const newInstructor = testDb
         .insert(schema.users)
-        .values({ name: "New", email: "new@test.com", role: schema.UserRole.Instructor })
+        .values({
+          name: "New",
+          email: "new@test.com",
+          role: schema.UserRole.Instructor,
+        })
         .returning()
         .get();
 
-      const revenue = getTotalRevenue({ courseIds: courseIdsFor(newInstructor.id)});
+      const revenue = getTotalRevenue({
+        courseIds: courseIdsFor(newInstructor.id),
+      });
       expect(revenue).toBe(0);
     });
   });
@@ -266,7 +295,9 @@ describe("analyticsService", () => {
 
   describe("getTotalEnrollments", () => {
     it("returns 0 when no enrollments exist", () => {
-      const count = getTotalEnrollments({ courseIds: courseIdsFor(base.instructor.id)});
+      const count = getTotalEnrollments({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(count).toBe(0);
     });
 
@@ -283,14 +314,20 @@ describe("analyticsService", () => {
       createEnrollment({ userId: s2.id, courseId: base.course.id });
       createEnrollment({ userId: s1.id, courseId: course2.id });
 
-      const count = getTotalEnrollments({ courseIds: courseIdsFor(base.instructor.id)});
+      const count = getTotalEnrollments({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(count).toBe(3);
     });
 
     it("does not count enrollments from other instructors", () => {
       const otherInstructor = testDb
         .insert(schema.users)
-        .values({ name: "Other", email: "other@test.com", role: schema.UserRole.Instructor })
+        .values({
+          name: "Other",
+          email: "other@test.com",
+          role: schema.UserRole.Instructor,
+        })
         .returning()
         .get();
 
@@ -304,7 +341,9 @@ describe("analyticsService", () => {
       createEnrollment({ userId: student.id, courseId: base.course.id });
       createEnrollment({ userId: student.id, courseId: otherCourse.id });
 
-      const count = getTotalEnrollments({ courseIds: courseIdsFor(base.instructor.id)});
+      const count = getTotalEnrollments({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(count).toBe(1);
     });
 
@@ -323,7 +362,8 @@ describe("analyticsService", () => {
         enrolledAt: "2025-03-15T00:00:00.000Z",
       });
 
-      const count = getTotalEnrollments({ courseIds: courseIdsFor(base.instructor.id),
+      const count = getTotalEnrollments({
+        courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -337,7 +377,9 @@ describe("analyticsService", () => {
 
   describe("getAverageCompletionRate", () => {
     it("returns 0 when no enrollments exist", () => {
-      const rate = getAverageCompletionRate({ courseIds: courseIdsFor(base.instructor.id)});
+      const rate = getAverageCompletionRate({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(rate).toBe(0);
     });
 
@@ -361,7 +403,9 @@ describe("analyticsService", () => {
       createEnrollment({ userId: s4.id, courseId: base.course.id });
 
       // 2 completed out of 4 = 50%
-      const rate = getAverageCompletionRate({ courseIds: courseIdsFor(base.instructor.id)});
+      const rate = getAverageCompletionRate({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(rate).toBe(50);
     });
 
@@ -373,7 +417,9 @@ describe("analyticsService", () => {
         completedAt: "2025-02-01T00:00:00.000Z",
       });
 
-      const rate = getAverageCompletionRate({ courseIds: courseIdsFor(base.instructor.id)});
+      const rate = getAverageCompletionRate({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(rate).toBe(100);
     });
 
@@ -394,7 +440,8 @@ describe("analyticsService", () => {
       });
 
       // Only s2 in range, not completed
-      const rate = getAverageCompletionRate({ courseIds: courseIdsFor(base.instructor.id),
+      const rate = getAverageCompletionRate({
+        courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -408,7 +455,9 @@ describe("analyticsService", () => {
 
   describe("getAverageQuizPassRate", () => {
     it("returns 0 when no quizzes exist", () => {
-      const rate = getAverageQuizPassRate({ courseIds: courseIdsFor(base.instructor.id)});
+      const rate = getAverageQuizPassRate({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(rate).toBe(0);
     });
 
@@ -416,7 +465,9 @@ describe("analyticsService", () => {
       const { lesson } = createModuleAndLesson(base.course.id);
       createQuiz(lesson.id);
 
-      const rate = getAverageQuizPassRate({ courseIds: courseIdsFor(base.instructor.id)});
+      const rate = getAverageQuizPassRate({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(rate).toBe(0);
     });
 
@@ -428,14 +479,31 @@ describe("analyticsService", () => {
       const s2 = createStudent("S2", "s2@test.com");
 
       // S1: failed first, passed second (best = passed)
-      createQuizAttempt({ userId: s1.id, quizId: quiz.id, score: 0.5, passed: false });
-      createQuizAttempt({ userId: s1.id, quizId: quiz.id, score: 0.9, passed: true });
+      createQuizAttempt({
+        userId: s1.id,
+        quizId: quiz.id,
+        score: 0.5,
+        passed: false,
+      });
+      createQuizAttempt({
+        userId: s1.id,
+        quizId: quiz.id,
+        score: 0.9,
+        passed: true,
+      });
 
       // S2: only failed
-      createQuizAttempt({ userId: s2.id, quizId: quiz.id, score: 0.3, passed: false });
+      createQuizAttempt({
+        userId: s2.id,
+        quizId: quiz.id,
+        score: 0.3,
+        passed: false,
+      });
 
       // 1 passed out of 2 students = 50%
-      const rate = getAverageQuizPassRate({ courseIds: courseIdsFor(base.instructor.id)});
+      const rate = getAverageQuizPassRate({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(rate).toBe(50);
     });
 
@@ -444,9 +512,16 @@ describe("analyticsService", () => {
       const quiz = createQuiz(lesson.id);
       const student = createStudent("S1", "s1@test.com");
 
-      createQuizAttempt({ userId: student.id, quizId: quiz.id, score: 0.9, passed: true });
+      createQuizAttempt({
+        userId: student.id,
+        quizId: quiz.id,
+        score: 0.9,
+        passed: true,
+      });
 
-      const rate = getAverageQuizPassRate({ courseIds: courseIdsFor(base.instructor.id)});
+      const rate = getAverageQuizPassRate({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(rate).toBe(100);
     });
 
@@ -473,7 +548,8 @@ describe("analyticsService", () => {
       });
 
       // Only s2 in range, who failed
-      const rate = getAverageQuizPassRate({ courseIds: courseIdsFor(base.instructor.id),
+      const rate = getAverageQuizPassRate({
+        courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -485,7 +561,11 @@ describe("analyticsService", () => {
     it("does not count quizzes from other instructors", () => {
       const otherInstructor = testDb
         .insert(schema.users)
-        .values({ name: "Other", email: "other@test.com", role: schema.UserRole.Instructor })
+        .values({
+          name: "Other",
+          email: "other@test.com",
+          role: schema.UserRole.Instructor,
+        })
         .returning()
         .get();
 
@@ -507,7 +587,9 @@ describe("analyticsService", () => {
       });
 
       // No quizzes for base instructor
-      const rate = getAverageQuizPassRate({ courseIds: courseIdsFor(base.instructor.id)});
+      const rate = getAverageQuizPassRate({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(rate).toBe(0);
     });
   });
@@ -552,7 +634,9 @@ describe("analyticsService", () => {
 
   describe("getRevenueTrend", () => {
     it("returns empty data when no purchases exist", () => {
-      const result = getRevenueTrend({ courseIds: courseIdsFor(base.instructor.id)});
+      const result = getRevenueTrend({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(result.data).toEqual([]);
     });
 
@@ -577,7 +661,8 @@ describe("analyticsService", () => {
         createdAt: "2025-02-10T00:00:00.000Z",
       });
 
-      const result = getRevenueTrend({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getRevenueTrend({
+        courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-01-01T00:00:00.000Z",
           to: "2025-03-01T00:00:00.000Z",
@@ -607,7 +692,8 @@ describe("analyticsService", () => {
         createdAt: "2025-03-15T00:00:00.000Z",
       });
 
-      const result = getRevenueTrend({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getRevenueTrend({
+        courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -623,7 +709,9 @@ describe("analyticsService", () => {
 
   describe("getEnrollmentTrend", () => {
     it("returns empty data when no enrollments exist", () => {
-      const result = getEnrollmentTrend({ courseIds: courseIdsFor(base.instructor.id)});
+      const result = getEnrollmentTrend({
+        courseIds: courseIdsFor(base.instructor.id),
+      });
       expect(result.data).toEqual([]);
     });
 
@@ -648,7 +736,8 @@ describe("analyticsService", () => {
         enrolledAt: "2025-02-10T00:00:00.000Z",
       });
 
-      const result = getEnrollmentTrend({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getEnrollmentTrend({
+        courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-01-01T00:00:00.000Z",
           to: "2025-03-01T00:00:00.000Z",
@@ -666,7 +755,8 @@ describe("analyticsService", () => {
 
   describe("getPerCourseEnrollments", () => {
     it("returns empty array when no enrollments exist", () => {
-      const result = getPerCourseEnrollments({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getPerCourseEnrollments({
+        courseIds: courseIdsFor(base.instructor.id),
       });
       expect(result).toEqual([]);
     });
@@ -686,7 +776,8 @@ describe("analyticsService", () => {
       createEnrollment({ userId: s2.id, courseId: course2.id });
       createEnrollment({ userId: s3.id, courseId: course2.id });
 
-      const result = getPerCourseEnrollments({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getPerCourseEnrollments({
+        courseIds: courseIdsFor(base.instructor.id),
       });
 
       expect(result.length).toBe(2);
@@ -718,7 +809,8 @@ describe("analyticsService", () => {
       createEnrollment({ userId: student.id, courseId: base.course.id });
       createEnrollment({ userId: student.id, courseId: otherCourse.id });
 
-      const result = getPerCourseEnrollments({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getPerCourseEnrollments({
+        courseIds: courseIdsFor(base.instructor.id),
       });
 
       expect(result.length).toBe(1);
@@ -740,7 +832,8 @@ describe("analyticsService", () => {
         enrolledAt: "2025-03-15T00:00:00.000Z",
       });
 
-      const result = getPerCourseEnrollments({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getPerCourseEnrollments({
+        courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -756,7 +849,8 @@ describe("analyticsService", () => {
 
   describe("getPerCourseCompletionRates", () => {
     it("returns empty array when no enrollments exist", () => {
-      const result = getPerCourseCompletionRates({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getPerCourseCompletionRates({
+        courseIds: courseIdsFor(base.instructor.id),
       });
       expect(result).toEqual([]);
     });
@@ -787,7 +881,8 @@ describe("analyticsService", () => {
         completedAt: "2025-02-01T00:00:00.000Z",
       });
 
-      const result = getPerCourseCompletionRates({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getPerCourseCompletionRates({
+        courseIds: courseIdsFor(base.instructor.id),
       });
 
       expect(result.length).toBe(2);
@@ -819,7 +914,8 @@ describe("analyticsService", () => {
         enrolledAt: "2025-03-15T00:00:00.000Z",
       });
 
-      const result = getPerCourseCompletionRates({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getPerCourseCompletionRates({
+        courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -836,7 +932,8 @@ describe("analyticsService", () => {
 
   describe("getQuizPerformanceByCourse", () => {
     it("returns empty array when no quizzes exist", () => {
-      const result = getQuizPerformanceByCourse({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getQuizPerformanceByCourse({
+        courseIds: courseIdsFor(base.instructor.id),
       });
       expect(result).toEqual([]);
     });
@@ -864,7 +961,8 @@ describe("analyticsService", () => {
         passed: false,
       });
 
-      const result = getQuizPerformanceByCourse({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getQuizPerformanceByCourse({
+        courseIds: courseIdsFor(base.instructor.id),
       });
 
       expect(result.length).toBe(1);
@@ -895,7 +993,8 @@ describe("analyticsService", () => {
         passed: true,
       });
 
-      const result = getQuizPerformanceByCourse({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getQuizPerformanceByCourse({
+        courseIds: courseIdsFor(base.instructor.id),
       });
 
       expect(result[0].averagePassRate).toBe(100);
@@ -906,7 +1005,8 @@ describe("analyticsService", () => {
       const { lesson } = createModuleAndLesson(base.course.id);
       createQuiz(lesson.id);
 
-      const result = getQuizPerformanceByCourse({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getQuizPerformanceByCourse({
+        courseIds: courseIdsFor(base.instructor.id),
       });
 
       expect(result.length).toBe(1);
@@ -936,7 +1036,8 @@ describe("analyticsService", () => {
         attemptedAt: "2025-03-15T00:00:00.000Z",
       });
 
-      const result = getQuizPerformanceByCourse({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getQuizPerformanceByCourse({
+        courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -957,7 +1058,11 @@ describe("analyticsService", () => {
     });
 
     it("returns lesson completion percentages in order", () => {
-      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const mod = createModule({
+        courseId: base.course.id,
+        title: "M1",
+        position: 1,
+      });
       const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
       const l2 = createLesson({ moduleId: mod.id, title: "L2", position: 2 });
       const l3 = createLesson({ moduleId: mod.id, title: "L3", position: 3 });
@@ -969,9 +1074,21 @@ describe("analyticsService", () => {
       createEnrollment({ userId: s2.id, courseId: base.course.id });
 
       // Both complete L1, only s1 completes L2, nobody completes L3
-      createLessonProgress({ userId: s1.id, lessonId: l1.id, completedAt: "2025-01-10T00:00:00.000Z" });
-      createLessonProgress({ userId: s2.id, lessonId: l1.id, completedAt: "2025-01-11T00:00:00.000Z" });
-      createLessonProgress({ userId: s1.id, lessonId: l2.id, completedAt: "2025-01-12T00:00:00.000Z" });
+      createLessonProgress({
+        userId: s1.id,
+        lessonId: l1.id,
+        completedAt: "2025-01-10T00:00:00.000Z",
+      });
+      createLessonProgress({
+        userId: s2.id,
+        lessonId: l1.id,
+        completedAt: "2025-01-11T00:00:00.000Z",
+      });
+      createLessonProgress({
+        userId: s1.id,
+        lessonId: l2.id,
+        completedAt: "2025-01-12T00:00:00.000Z",
+      });
 
       const result = getLessonFunnel({ courseId: base.course.id });
 
@@ -985,8 +1102,16 @@ describe("analyticsService", () => {
     });
 
     it("orders lessons by module position then lesson position", () => {
-      const m1 = createModule({ courseId: base.course.id, title: "M1", position: 1 });
-      const m2 = createModule({ courseId: base.course.id, title: "M2", position: 2 });
+      const m1 = createModule({
+        courseId: base.course.id,
+        title: "M1",
+        position: 1,
+      });
+      const m2 = createModule({
+        courseId: base.course.id,
+        title: "M2",
+        position: 2,
+      });
       const l1 = createLesson({ moduleId: m1.id, title: "M1-L1", position: 1 });
       const l2 = createLesson({ moduleId: m2.id, title: "M2-L1", position: 1 });
 
@@ -1002,21 +1127,44 @@ describe("analyticsService", () => {
     });
 
     it("scopes to enrollments within date range", () => {
-      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const mod = createModule({
+        courseId: base.course.id,
+        title: "M1",
+        position: 1,
+      });
       const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
 
       const s1 = createStudent("S1", "s1@test.com");
       const s2 = createStudent("S2", "s2@test.com");
 
-      createEnrollment({ userId: s1.id, courseId: base.course.id, enrolledAt: "2025-01-01T00:00:00.000Z" });
-      createEnrollment({ userId: s2.id, courseId: base.course.id, enrolledAt: "2025-03-01T00:00:00.000Z" });
+      createEnrollment({
+        userId: s1.id,
+        courseId: base.course.id,
+        enrolledAt: "2025-01-01T00:00:00.000Z",
+      });
+      createEnrollment({
+        userId: s2.id,
+        courseId: base.course.id,
+        enrolledAt: "2025-03-01T00:00:00.000Z",
+      });
 
-      createLessonProgress({ userId: s1.id, lessonId: l1.id, completedAt: "2025-01-10T00:00:00.000Z" });
-      createLessonProgress({ userId: s2.id, lessonId: l1.id, completedAt: "2025-03-10T00:00:00.000Z" });
+      createLessonProgress({
+        userId: s1.id,
+        lessonId: l1.id,
+        completedAt: "2025-01-10T00:00:00.000Z",
+      });
+      createLessonProgress({
+        userId: s2.id,
+        lessonId: l1.id,
+        completedAt: "2025-03-10T00:00:00.000Z",
+      });
 
       const result = getLessonFunnel({
         courseId: base.course.id,
-        dateRange: { from: "2025-02-01T00:00:00.000Z", to: "2025-04-01T00:00:00.000Z" },
+        dateRange: {
+          from: "2025-02-01T00:00:00.000Z",
+          to: "2025-04-01T00:00:00.000Z",
+        },
       });
 
       // Only s2 enrolled in range, and s2 completed L1
@@ -1035,11 +1183,19 @@ describe("analyticsService", () => {
     });
 
     it("returns module completion percentages", () => {
-      const m1 = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const m1 = createModule({
+        courseId: base.course.id,
+        title: "M1",
+        position: 1,
+      });
       const l1 = createLesson({ moduleId: m1.id, title: "L1", position: 1 });
       const l2 = createLesson({ moduleId: m1.id, title: "L2", position: 2 });
 
-      const m2 = createModule({ courseId: base.course.id, title: "M2", position: 2 });
+      const m2 = createModule({
+        courseId: base.course.id,
+        title: "M2",
+        position: 2,
+      });
       const l3 = createLesson({ moduleId: m2.id, title: "L3", position: 1 });
 
       const s1 = createStudent("S1", "s1@test.com");
@@ -1049,12 +1205,28 @@ describe("analyticsService", () => {
       createEnrollment({ userId: s2.id, courseId: base.course.id });
 
       // S1 completes all of M1 (L1 + L2) and M2 (L3)
-      createLessonProgress({ userId: s1.id, lessonId: l1.id, completedAt: "2025-01-10T00:00:00.000Z" });
-      createLessonProgress({ userId: s1.id, lessonId: l2.id, completedAt: "2025-01-11T00:00:00.000Z" });
-      createLessonProgress({ userId: s1.id, lessonId: l3.id, completedAt: "2025-01-12T00:00:00.000Z" });
+      createLessonProgress({
+        userId: s1.id,
+        lessonId: l1.id,
+        completedAt: "2025-01-10T00:00:00.000Z",
+      });
+      createLessonProgress({
+        userId: s1.id,
+        lessonId: l2.id,
+        completedAt: "2025-01-11T00:00:00.000Z",
+      });
+      createLessonProgress({
+        userId: s1.id,
+        lessonId: l3.id,
+        completedAt: "2025-01-12T00:00:00.000Z",
+      });
 
       // S2 completes only L1 of M1 (not all of M1)
-      createLessonProgress({ userId: s2.id, lessonId: l1.id, completedAt: "2025-01-10T00:00:00.000Z" });
+      createLessonProgress({
+        userId: s2.id,
+        lessonId: l1.id,
+        completedAt: "2025-01-10T00:00:00.000Z",
+      });
 
       const result = getModuleFunnel({ courseId: base.course.id });
 
@@ -1120,7 +1292,11 @@ describe("analyticsService", () => {
     });
 
     it("classifies in-progress students (enrolled recently)", () => {
-      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const mod = createModule({
+        courseId: base.course.id,
+        title: "M1",
+        position: 1,
+      });
       const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
 
       const student = createStudent("S1", "s1@test.com");
@@ -1141,7 +1317,11 @@ describe("analyticsService", () => {
     });
 
     it("classifies in-progress students (active recently)", () => {
-      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const mod = createModule({
+        courseId: base.course.id,
+        title: "M1",
+        position: 1,
+      });
       const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
 
       const student = createStudent("S1", "s1@test.com");
@@ -1162,7 +1342,11 @@ describe("analyticsService", () => {
     });
 
     it("classifies abandoned students", () => {
-      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const mod = createModule({
+        courseId: base.course.id,
+        title: "M1",
+        position: 1,
+      });
       const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
 
       const student = createStudent("S1", "s1@test.com");
@@ -1183,7 +1367,11 @@ describe("analyticsService", () => {
     });
 
     it("correctly segments a mixed group of students", () => {
-      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const mod = createModule({
+        courseId: base.course.id,
+        title: "M1",
+        position: 1,
+      });
       const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
 
       const s1 = createStudent("S1", "s1@test.com"); // completed
@@ -1235,16 +1423,27 @@ describe("analyticsService", () => {
     it("returns empty array when no courses exist", () => {
       const newInstructor = testDb
         .insert(schema.users)
-        .values({ name: "New", email: "new@test.com", role: schema.UserRole.Instructor })
+        .values({
+          name: "New",
+          email: "new@test.com",
+          role: schema.UserRole.Instructor,
+        })
         .returning()
         .get();
 
-      const result = getDropOffAnalysis({ courseIds: courseIdsFor(newInstructor.id), now });
+      const result = getDropOffAnalysis({
+        courseIds: courseIdsFor(newInstructor.id),
+        now,
+      });
       expect(result).toEqual([]);
     });
 
     it("returns drop-off data for each course", () => {
-      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const mod = createModule({
+        courseId: base.course.id,
+        title: "M1",
+        position: 1,
+      });
       const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
 
       const s1 = createStudent("S1", "s1@test.com");
@@ -1271,7 +1470,8 @@ describe("analyticsService", () => {
         completedAt: "2025-01-10T00:00:00.000Z",
       });
 
-      const result = getDropOffAnalysis({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getDropOffAnalysis({
+        courseIds: courseIdsFor(base.instructor.id),
         now,
       });
 
@@ -1289,7 +1489,8 @@ describe("analyticsService", () => {
       const student = createStudent("S1", "s1@test.com");
       createEnrollment({ userId: student.id, courseId: base.course.id });
 
-      const result = getDropOffAnalysis({ courseIds: courseIdsFor(base.instructor.id),
+      const result = getDropOffAnalysis({
+        courseIds: courseIdsFor(base.instructor.id),
         now,
       });
 
