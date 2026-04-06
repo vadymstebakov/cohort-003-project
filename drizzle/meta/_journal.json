@@ -43,6 +43,13 @@
       "when": 1775320400215,
       "tag": "0005_vengeful_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1775480672588,
+      "tag": "0006_gray_venom",
+      "breakpoints": true
     }
   ]
 }
