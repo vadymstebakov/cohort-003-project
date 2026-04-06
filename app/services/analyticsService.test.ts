@@ -22,6 +22,10 @@ import {
   getPerCourseCompletionRates,
   getQuizPerformanceByCourse,
   determineGranularity,
+  getLessonFunnel,
+  getModuleFunnel,
+  getStudentSegments,
+  getDropOffAnalysis,
 } from "./analyticsService";
 
 // ─── Helpers ───
@@ -90,20 +94,53 @@ function createEnrollment(opts: {
     .get();
 }
 
-function createModuleAndLesson(courseId: number) {
-  const mod = testDb
+function createModule(opts: {
+  courseId: number;
+  title: string;
+  position: number;
+}) {
+  return testDb
     .insert(schema.modules)
-    .values({ courseId, title: "Module 1", position: 1 })
+    .values(opts)
     .returning()
     .get();
+}
 
-  const lesson = testDb
+function createLesson(opts: {
+  moduleId: number;
+  title: string;
+  position: number;
+}) {
+  return testDb
     .insert(schema.lessons)
-    .values({ moduleId: mod.id, title: "Lesson 1", position: 1 })
+    .values(opts)
     .returning()
     .get();
+}
 
+function createModuleAndLesson(courseId: number) {
+  const mod = createModule({ courseId, title: "Module 1", position: 1 });
+  const lesson = createLesson({ moduleId: mod.id, title: "Lesson 1", position: 1 });
   return { module: mod, lesson };
+}
+
+function createLessonProgress(opts: {
+  userId: number;
+  lessonId: number;
+  completedAt?: string | null;
+}) {
+  return testDb
+    .insert(schema.lessonProgress)
+    .values({
+      userId: opts.userId,
+      lessonId: opts.lessonId,
+      status: opts.completedAt
+        ? schema.LessonProgressStatus.Completed
+        : schema.LessonProgressStatus.InProgress,
+      completedAt: opts.completedAt ?? null,
+    })
+    .returning()
+    .get();
 }
 
 function createQuiz(lessonId: number) {
@@ -922,6 +959,358 @@ describe("analyticsService", () => {
 
       // Only s2 in range, who failed
       expect(result[0].averagePassRate).toBe(0);
+    });
+  });
+
+  // ─── getLessonFunnel ───
+
+  describe("getLessonFunnel", () => {
+    it("returns empty array when no enrollments exist", () => {
+      const result = getLessonFunnel({ courseId: base.course.id });
+      expect(result).toEqual([]);
+    });
+
+    it("returns lesson completion percentages in order", () => {
+      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
+      const l2 = createLesson({ moduleId: mod.id, title: "L2", position: 2 });
+      const l3 = createLesson({ moduleId: mod.id, title: "L3", position: 3 });
+
+      const s1 = createStudent("S1", "s1@test.com");
+      const s2 = createStudent("S2", "s2@test.com");
+
+      createEnrollment({ userId: s1.id, courseId: base.course.id });
+      createEnrollment({ userId: s2.id, courseId: base.course.id });
+
+      // Both complete L1, only s1 completes L2, nobody completes L3
+      createLessonProgress({ userId: s1.id, lessonId: l1.id, completedAt: "2025-01-10T00:00:00.000Z" });
+      createLessonProgress({ userId: s2.id, lessonId: l1.id, completedAt: "2025-01-11T00:00:00.000Z" });
+      createLessonProgress({ userId: s1.id, lessonId: l2.id, completedAt: "2025-01-12T00:00:00.000Z" });
+
+      const result = getLessonFunnel({ courseId: base.course.id });
+
+      expect(result.length).toBe(3);
+      expect(result[0].lessonTitle).toBe("L1");
+      expect(result[0].completionPercent).toBe(100); // 2/2
+      expect(result[1].lessonTitle).toBe("L2");
+      expect(result[1].completionPercent).toBe(50); // 1/2
+      expect(result[2].lessonTitle).toBe("L3");
+      expect(result[2].completionPercent).toBe(0); // 0/2
+    });
+
+    it("orders lessons by module position then lesson position", () => {
+      const m1 = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const m2 = createModule({ courseId: base.course.id, title: "M2", position: 2 });
+      const l1 = createLesson({ moduleId: m1.id, title: "M1-L1", position: 1 });
+      const l2 = createLesson({ moduleId: m2.id, title: "M2-L1", position: 1 });
+
+      const student = createStudent("S1", "s1@test.com");
+      createEnrollment({ userId: student.id, courseId: base.course.id });
+
+      const result = getLessonFunnel({ courseId: base.course.id });
+
+      expect(result[0].lessonTitle).toBe("M1-L1");
+      expect(result[0].modulePosition).toBe(1);
+      expect(result[1].lessonTitle).toBe("M2-L1");
+      expect(result[1].modulePosition).toBe(2);
+    });
+
+    it("scopes to enrollments within date range", () => {
+      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
+
+      const s1 = createStudent("S1", "s1@test.com");
+      const s2 = createStudent("S2", "s2@test.com");
+
+      createEnrollment({ userId: s1.id, courseId: base.course.id, enrolledAt: "2025-01-01T00:00:00.000Z" });
+      createEnrollment({ userId: s2.id, courseId: base.course.id, enrolledAt: "2025-03-01T00:00:00.000Z" });
+
+      createLessonProgress({ userId: s1.id, lessonId: l1.id, completedAt: "2025-01-10T00:00:00.000Z" });
+      createLessonProgress({ userId: s2.id, lessonId: l1.id, completedAt: "2025-03-10T00:00:00.000Z" });
+
+      const result = getLessonFunnel({
+        courseId: base.course.id,
+        dateRange: { from: "2025-02-01T00:00:00.000Z", to: "2025-04-01T00:00:00.000Z" },
+      });
+
+      // Only s2 enrolled in range, and s2 completed L1
+      expect(result.length).toBe(1);
+      expect(result[0].completionPercent).toBe(100);
+      expect(result[0].completedCount).toBe(1);
+    });
+  });
+
+  // ─── getModuleFunnel ───
+
+  describe("getModuleFunnel", () => {
+    it("returns empty array when no enrollments exist", () => {
+      const result = getModuleFunnel({ courseId: base.course.id });
+      expect(result).toEqual([]);
+    });
+
+    it("returns module completion percentages", () => {
+      const m1 = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const l1 = createLesson({ moduleId: m1.id, title: "L1", position: 1 });
+      const l2 = createLesson({ moduleId: m1.id, title: "L2", position: 2 });
+
+      const m2 = createModule({ courseId: base.course.id, title: "M2", position: 2 });
+      const l3 = createLesson({ moduleId: m2.id, title: "L3", position: 1 });
+
+      const s1 = createStudent("S1", "s1@test.com");
+      const s2 = createStudent("S2", "s2@test.com");
+
+      createEnrollment({ userId: s1.id, courseId: base.course.id });
+      createEnrollment({ userId: s2.id, courseId: base.course.id });
+
+      // S1 completes all of M1 (L1 + L2) and M2 (L3)
+      createLessonProgress({ userId: s1.id, lessonId: l1.id, completedAt: "2025-01-10T00:00:00.000Z" });
+      createLessonProgress({ userId: s1.id, lessonId: l2.id, completedAt: "2025-01-11T00:00:00.000Z" });
+      createLessonProgress({ userId: s1.id, lessonId: l3.id, completedAt: "2025-01-12T00:00:00.000Z" });
+
+      // S2 completes only L1 of M1 (not all of M1)
+      createLessonProgress({ userId: s2.id, lessonId: l1.id, completedAt: "2025-01-10T00:00:00.000Z" });
+
+      const result = getModuleFunnel({ courseId: base.course.id });
+
+      expect(result.length).toBe(2);
+      // M1: only s1 completed all lessons (L1+L2) → 50%
+      expect(result[0].moduleTitle).toBe("M1");
+      expect(result[0].completionPercent).toBe(50);
+      expect(result[0].lessonCount).toBe(2);
+      // M2: only s1 completed all lessons (L3) → 50%
+      expect(result[1].moduleTitle).toBe("M2");
+      expect(result[1].completionPercent).toBe(50);
+    });
+
+    it("returns 0 for modules with no lessons", () => {
+      createModule({ courseId: base.course.id, title: "Empty", position: 1 });
+
+      const student = createStudent("S1", "s1@test.com");
+      createEnrollment({ userId: student.id, courseId: base.course.id });
+
+      const result = getModuleFunnel({ courseId: base.course.id });
+
+      expect(result.length).toBe(1);
+      expect(result[0].completionPercent).toBe(0);
+      expect(result[0].lessonCount).toBe(0);
+    });
+  });
+
+  // ─── getStudentSegments ───
+
+  describe("getStudentSegments", () => {
+    const now = "2025-03-01T00:00:00.000Z";
+
+    it("returns all zeros when no enrollments exist", () => {
+      const result = getStudentSegments({ courseId: base.course.id, now });
+      expect(result).toEqual({
+        neverStarted: 0,
+        inProgress: 0,
+        abandoned: 0,
+        completed: 0,
+        total: 0,
+      });
+    });
+
+    it("classifies completed students", () => {
+      const student = createStudent("S1", "s1@test.com");
+      createEnrollment({
+        userId: student.id,
+        courseId: base.course.id,
+        completedAt: "2025-02-01T00:00:00.000Z",
+      });
+
+      const result = getStudentSegments({ courseId: base.course.id, now });
+      expect(result.completed).toBe(1);
+      expect(result.total).toBe(1);
+    });
+
+    it("classifies never-started students", () => {
+      const student = createStudent("S1", "s1@test.com");
+      createEnrollment({ userId: student.id, courseId: base.course.id });
+
+      const result = getStudentSegments({ courseId: base.course.id, now });
+      expect(result.neverStarted).toBe(1);
+    });
+
+    it("classifies in-progress students (enrolled recently)", () => {
+      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
+
+      const student = createStudent("S1", "s1@test.com");
+      // Enrolled 5 days ago (< 14 days)
+      createEnrollment({
+        userId: student.id,
+        courseId: base.course.id,
+        enrolledAt: "2025-02-24T00:00:00.000Z",
+      });
+      createLessonProgress({
+        userId: student.id,
+        lessonId: l1.id,
+        completedAt: "2025-02-25T00:00:00.000Z",
+      });
+
+      const result = getStudentSegments({ courseId: base.course.id, now });
+      expect(result.inProgress).toBe(1);
+    });
+
+    it("classifies in-progress students (active recently)", () => {
+      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
+
+      const student = createStudent("S1", "s1@test.com");
+      // Enrolled > 14 days ago, but had activity within 14 days
+      createEnrollment({
+        userId: student.id,
+        courseId: base.course.id,
+        enrolledAt: "2025-01-01T00:00:00.000Z",
+      });
+      createLessonProgress({
+        userId: student.id,
+        lessonId: l1.id,
+        completedAt: "2025-02-20T00:00:00.000Z", // 9 days ago, < 14 days
+      });
+
+      const result = getStudentSegments({ courseId: base.course.id, now });
+      expect(result.inProgress).toBe(1);
+    });
+
+    it("classifies abandoned students", () => {
+      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
+
+      const student = createStudent("S1", "s1@test.com");
+      // Enrolled > 14 days ago, last activity > 14 days ago
+      createEnrollment({
+        userId: student.id,
+        courseId: base.course.id,
+        enrolledAt: "2025-01-01T00:00:00.000Z",
+      });
+      createLessonProgress({
+        userId: student.id,
+        lessonId: l1.id,
+        completedAt: "2025-01-10T00:00:00.000Z", // 50 days ago, > 14 days
+      });
+
+      const result = getStudentSegments({ courseId: base.course.id, now });
+      expect(result.abandoned).toBe(1);
+    });
+
+    it("correctly segments a mixed group of students", () => {
+      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
+
+      const s1 = createStudent("S1", "s1@test.com"); // completed
+      const s2 = createStudent("S2", "s2@test.com"); // never started
+      const s3 = createStudent("S3", "s3@test.com"); // in progress (recent enrollment)
+      const s4 = createStudent("S4", "s4@test.com"); // abandoned
+
+      createEnrollment({
+        userId: s1.id,
+        courseId: base.course.id,
+        completedAt: "2025-02-01T00:00:00.000Z",
+      });
+      createEnrollment({ userId: s2.id, courseId: base.course.id });
+      createEnrollment({
+        userId: s3.id,
+        courseId: base.course.id,
+        enrolledAt: "2025-02-25T00:00:00.000Z",
+      });
+      createLessonProgress({
+        userId: s3.id,
+        lessonId: l1.id,
+        completedAt: "2025-02-26T00:00:00.000Z",
+      });
+      createEnrollment({
+        userId: s4.id,
+        courseId: base.course.id,
+        enrolledAt: "2025-01-01T00:00:00.000Z",
+      });
+      createLessonProgress({
+        userId: s4.id,
+        lessonId: l1.id,
+        completedAt: "2025-01-05T00:00:00.000Z",
+      });
+
+      const result = getStudentSegments({ courseId: base.course.id, now });
+      expect(result.completed).toBe(1);
+      expect(result.neverStarted).toBe(1);
+      expect(result.inProgress).toBe(1);
+      expect(result.abandoned).toBe(1);
+      expect(result.total).toBe(4);
+    });
+  });
+
+  // ─── getDropOffAnalysis ───
+
+  describe("getDropOffAnalysis", () => {
+    const now = "2025-03-01T00:00:00.000Z";
+
+    it("returns empty array when no courses exist", () => {
+      const newInstructor = testDb
+        .insert(schema.users)
+        .values({ name: "New", email: "new@test.com", role: schema.UserRole.Instructor })
+        .returning()
+        .get();
+
+      const result = getDropOffAnalysis({ instructorId: newInstructor.id, now });
+      expect(result).toEqual([]);
+    });
+
+    it("returns drop-off data for each course", () => {
+      const mod = createModule({ courseId: base.course.id, title: "M1", position: 1 });
+      const l1 = createLesson({ moduleId: mod.id, title: "L1", position: 1 });
+
+      const s1 = createStudent("S1", "s1@test.com");
+      const s2 = createStudent("S2", "s2@test.com");
+
+      createEnrollment({
+        userId: s1.id,
+        courseId: base.course.id,
+        completedAt: "2025-02-01T00:00:00.000Z",
+      });
+      createEnrollment({
+        userId: s2.id,
+        courseId: base.course.id,
+        enrolledAt: "2025-01-01T00:00:00.000Z",
+      });
+      createLessonProgress({
+        userId: s1.id,
+        lessonId: l1.id,
+        completedAt: "2025-01-15T00:00:00.000Z",
+      });
+      createLessonProgress({
+        userId: s2.id,
+        lessonId: l1.id,
+        completedAt: "2025-01-10T00:00:00.000Z",
+      });
+
+      const result = getDropOffAnalysis({
+        instructorId: base.instructor.id,
+        now,
+      });
+
+      expect(result.length).toBe(1);
+      expect(result[0].courseTitle).toBe(base.course.title);
+      expect(result[0].lessonFunnel.length).toBe(1);
+      expect(result[0].moduleFunnel.length).toBe(1);
+      expect(result[0].segments.total).toBe(2);
+      // s1 completed, s2 started but abandoned (enrolled > 14 days, last activity > 14 days)
+      // 2 started, 1 completed → drop-off = (2-1)/2 = 50%
+      expect(result[0].dropOffRate).toBe(50);
+    });
+
+    it("calculates 0 drop-off when no students started", () => {
+      const student = createStudent("S1", "s1@test.com");
+      createEnrollment({ userId: student.id, courseId: base.course.id });
+
+      const result = getDropOffAnalysis({
+        instructorId: base.instructor.id,
+        now,
+      });
+
+      // No one started, drop-off rate = 0
+      expect(result[0].dropOffRate).toBe(0);
     });
   });
 });

@@ -7,6 +7,7 @@ import {
   quizzes,
   quizAttempts,
   lessons,
+  lessonProgress,
   modules,
 } from "~/db/schema";
 
@@ -372,6 +373,49 @@ export function getPerCourseCompletionRates(opts: {
   }));
 }
 
+// ─── Phase 3: Drop-off Analysis types ───
+
+export interface LessonFunnelRow {
+  lessonId: number;
+  lessonTitle: string;
+  position: number;
+  modulePosition: number;
+  completedCount: number;
+  completionPercent: number;
+}
+
+export interface ModuleFunnelRow {
+  moduleId: number;
+  moduleTitle: string;
+  position: number;
+  lessonCount: number;
+  completedCount: number;
+  completionPercent: number;
+}
+
+export type StudentSegment =
+  | "never_started"
+  | "in_progress"
+  | "abandoned"
+  | "completed";
+
+export interface StudentSegmentCounts {
+  neverStarted: number;
+  inProgress: number;
+  abandoned: number;
+  completed: number;
+  total: number;
+}
+
+export interface CourseDropOffData {
+  courseId: number;
+  courseTitle: string;
+  lessonFunnel: LessonFunnelRow[];
+  moduleFunnel: ModuleFunnelRow[];
+  segments: StudentSegmentCounts;
+  dropOffRate: number;
+}
+
 export function getQuizPerformanceByCourse(opts: {
   instructorId: number;
   dateRange?: DateRange;
@@ -468,4 +512,371 @@ export function getQuizPerformanceByCourse(opts: {
   }
 
   return results;
+}
+
+// ─── Phase 3: Drop-off Analysis queries ───
+
+export function getLessonFunnel(opts: {
+  courseId: number;
+  dateRange?: DateRange;
+}): LessonFunnelRow[] {
+  // Get total enrolled students for this course
+  const enrollmentConditions = [eq(enrollments.courseId, opts.courseId)];
+  if (opts.dateRange?.from) {
+    enrollmentConditions.push(gte(enrollments.enrolledAt, opts.dateRange.from));
+  }
+  if (opts.dateRange?.to) {
+    enrollmentConditions.push(lte(enrollments.enrolledAt, opts.dateRange.to));
+  }
+
+  const enrolledResult = db
+    .select({ count: sql<number>`count(*)` })
+    .from(enrollments)
+    .where(and(...enrollmentConditions))
+    .get();
+
+  const totalEnrolled = enrolledResult?.count ?? 0;
+  if (totalEnrolled === 0) return [];
+
+  // Get all lessons for this course ordered by module position, then lesson position
+  const lessonRows = db
+    .select({
+      lessonId: lessons.id,
+      lessonTitle: lessons.title,
+      position: lessons.position,
+      modulePosition: modules.position,
+    })
+    .from(lessons)
+    .innerJoin(modules, eq(lessons.moduleId, modules.id))
+    .where(eq(modules.courseId, opts.courseId))
+    .orderBy(modules.position, lessons.position)
+    .all();
+
+  if (lessonRows.length === 0) return [];
+
+  // Get enrolled user IDs for the date range
+  const enrolledUsers = db
+    .select({ userId: enrollments.userId })
+    .from(enrollments)
+    .where(and(...enrollmentConditions))
+    .all()
+    .map((r) => r.userId);
+
+  // Count completions per lesson among enrolled students
+  const lessonIds = lessonRows.map((r) => r.lessonId);
+
+  const completionRows = db
+    .select({
+      lessonId: lessonProgress.lessonId,
+      completedCount: sql<number>`count(distinct ${lessonProgress.userId})`.as(
+        "completed_count"
+      ),
+    })
+    .from(lessonProgress)
+    .where(
+      and(
+        inArray(lessonProgress.lessonId, lessonIds),
+        inArray(lessonProgress.userId, enrolledUsers),
+        sql`${lessonProgress.completedAt} is not null`
+      )
+    )
+    .groupBy(lessonProgress.lessonId)
+    .all();
+
+  const completionMap = new Map(
+    completionRows.map((r) => [r.lessonId, r.completedCount])
+  );
+
+  return lessonRows.map((row) => {
+    const completedCount = completionMap.get(row.lessonId) ?? 0;
+    return {
+      lessonId: row.lessonId,
+      lessonTitle: row.lessonTitle,
+      position: row.position,
+      modulePosition: row.modulePosition,
+      completedCount,
+      completionPercent:
+        totalEnrolled > 0
+          ? Math.round((completedCount / totalEnrolled) * 100)
+          : 0,
+    };
+  });
+}
+
+export function getModuleFunnel(opts: {
+  courseId: number;
+  dateRange?: DateRange;
+}): ModuleFunnelRow[] {
+  // Get total enrolled students for this course
+  const enrollmentConditions = [eq(enrollments.courseId, opts.courseId)];
+  if (opts.dateRange?.from) {
+    enrollmentConditions.push(gte(enrollments.enrolledAt, opts.dateRange.from));
+  }
+  if (opts.dateRange?.to) {
+    enrollmentConditions.push(lte(enrollments.enrolledAt, opts.dateRange.to));
+  }
+
+  const enrolledResult = db
+    .select({ count: sql<number>`count(*)` })
+    .from(enrollments)
+    .where(and(...enrollmentConditions))
+    .get();
+
+  const totalEnrolled = enrolledResult?.count ?? 0;
+  if (totalEnrolled === 0) return [];
+
+  // Get enrolled user IDs
+  const enrolledUsers = db
+    .select({ userId: enrollments.userId })
+    .from(enrollments)
+    .where(and(...enrollmentConditions))
+    .all()
+    .map((r) => r.userId);
+
+  // Get modules for this course
+  const moduleRows = db
+    .select({
+      moduleId: modules.id,
+      moduleTitle: modules.title,
+      position: modules.position,
+    })
+    .from(modules)
+    .where(eq(modules.courseId, opts.courseId))
+    .orderBy(modules.position)
+    .all();
+
+  if (moduleRows.length === 0) return [];
+
+  return moduleRows.map((mod) => {
+    // Get all lessons in this module
+    const moduleLessons = db
+      .select({ id: lessons.id })
+      .from(lessons)
+      .where(eq(lessons.moduleId, mod.moduleId))
+      .all();
+
+    const lessonCount = moduleLessons.length;
+    if (lessonCount === 0) {
+      return {
+        moduleId: mod.moduleId,
+        moduleTitle: mod.moduleTitle,
+        position: mod.position,
+        lessonCount: 0,
+        completedCount: 0,
+        completionPercent: 0,
+      };
+    }
+
+    const lessonIds = moduleLessons.map((l) => l.id);
+
+    // Count students who completed ALL lessons in this module
+    // A student completes a module if they have a completed lessonProgress for every lesson
+    const completedStudents = db
+      .select({
+        count: sql<number>`count(*)`.as("count"),
+      })
+      .from(
+        db
+          .select({
+            userId: lessonProgress.userId,
+            completedLessons:
+              sql<number>`count(distinct ${lessonProgress.lessonId})`.as(
+                "completed_lessons"
+              ),
+          })
+          .from(lessonProgress)
+          .where(
+            and(
+              inArray(lessonProgress.lessonId, lessonIds),
+              inArray(lessonProgress.userId, enrolledUsers),
+              sql`${lessonProgress.completedAt} is not null`
+            )
+          )
+          .groupBy(lessonProgress.userId)
+          .having(
+            sql`count(distinct ${lessonProgress.lessonId}) = ${lessonCount}`
+          )
+          .as("module_completers")
+      )
+      .get();
+
+    const completedCount = completedStudents?.count ?? 0;
+
+    return {
+      moduleId: mod.moduleId,
+      moduleTitle: mod.moduleTitle,
+      position: mod.position,
+      lessonCount,
+      completedCount,
+      completionPercent:
+        totalEnrolled > 0
+          ? Math.round((completedCount / totalEnrolled) * 100)
+          : 0,
+    };
+  });
+}
+
+export function getStudentSegments(opts: {
+  courseId: number;
+  now: string;
+  dateRange?: DateRange;
+}): StudentSegmentCounts {
+  const enrollmentConditions = [eq(enrollments.courseId, opts.courseId)];
+  if (opts.dateRange?.from) {
+    enrollmentConditions.push(gte(enrollments.enrolledAt, opts.dateRange.from));
+  }
+  if (opts.dateRange?.to) {
+    enrollmentConditions.push(lte(enrollments.enrolledAt, opts.dateRange.to));
+  }
+
+  // Get all enrolled students with their enrollment info
+  const enrolledStudents = db
+    .select({
+      userId: enrollments.userId,
+      enrolledAt: enrollments.enrolledAt,
+      completedAt: enrollments.completedAt,
+    })
+    .from(enrollments)
+    .where(and(...enrollmentConditions))
+    .all();
+
+  if (enrolledStudents.length === 0) {
+    return { neverStarted: 0, inProgress: 0, abandoned: 0, completed: 0, total: 0 };
+  }
+
+  // Get all lessons for this course
+  const courseLessons = db
+    .select({ id: lessons.id })
+    .from(lessons)
+    .innerJoin(modules, eq(lessons.moduleId, modules.id))
+    .where(eq(modules.courseId, opts.courseId))
+    .all();
+
+  const lessonIds = courseLessons.map((l) => l.id);
+
+  // Get lesson completion counts and last activity per user
+  const userIds = enrolledStudents.map((s) => s.userId);
+
+  const progressRows =
+    lessonIds.length > 0
+      ? db
+          .select({
+            userId: lessonProgress.userId,
+            completedCount:
+              sql<number>`count(distinct case when ${lessonProgress.completedAt} is not null then ${lessonProgress.lessonId} end)`.as(
+                "completed_count"
+              ),
+            lastActivity:
+              sql<string>`max(${lessonProgress.completedAt})`.as(
+                "last_activity"
+              ),
+          })
+          .from(lessonProgress)
+          .where(
+            and(
+              inArray(lessonProgress.userId, userIds),
+              inArray(lessonProgress.lessonId, lessonIds)
+            )
+          )
+          .groupBy(lessonProgress.userId)
+          .all()
+      : [];
+
+  const progressMap = new Map(progressRows.map((r) => [r.userId, r]));
+
+  const nowDate = new Date(opts.now);
+  const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+
+  let neverStarted = 0;
+  let inProgress = 0;
+  let abandoned = 0;
+  let completed = 0;
+
+  for (const student of enrolledStudents) {
+    // Completed: enrollment has completedAt set
+    if (student.completedAt) {
+      completed++;
+      continue;
+    }
+
+    const progress = progressMap.get(student.userId);
+    const completedLessons = progress?.completedCount ?? 0;
+
+    // Never started: zero lesson completions
+    if (completedLessons === 0) {
+      neverStarted++;
+      continue;
+    }
+
+    // Has started but not completed the course
+    const enrolledDate = new Date(student.enrolledAt);
+    const enrolledMoreThan14Days =
+      nowDate.getTime() - enrolledDate.getTime() > fourteenDaysMs;
+
+    const lastActivity = progress?.lastActivity
+      ? new Date(progress.lastActivity)
+      : null;
+    const noRecentActivity = lastActivity
+      ? nowDate.getTime() - lastActivity.getTime() > fourteenDaysMs
+      : true;
+
+    // Abandoned: started, < 100% progress, no activity 14+ days, enrolled 14+ days ago
+    if (enrolledMoreThan14Days && noRecentActivity) {
+      abandoned++;
+    } else {
+      // In progress: started, enrolled < 14 days ago OR active in last 14 days
+      inProgress++;
+    }
+  }
+
+  return {
+    neverStarted,
+    inProgress,
+    abandoned,
+    completed,
+    total: enrolledStudents.length,
+  };
+}
+
+export function getDropOffAnalysis(opts: {
+  instructorId: number;
+  now: string;
+  dateRange?: DateRange;
+}): CourseDropOffData[] {
+  const courseIds = getCourseIdsForInstructor(opts.instructorId);
+  if (courseIds.length === 0) return [];
+
+  // Get course titles
+  const courseRows = db
+    .select({ id: courses.id, title: courses.title })
+    .from(courses)
+    .where(inArray(courses.id, courseIds))
+    .all();
+
+  return courseRows.map((course) => {
+    const courseOpts = { courseId: course.id, dateRange: opts.dateRange };
+    const lessonFunnel = getLessonFunnel(courseOpts);
+    const moduleFunnel = getModuleFunnel(courseOpts);
+    const segments = getStudentSegments({
+      ...courseOpts,
+      now: opts.now,
+    });
+
+    // Drop-off rate: percentage of students who started but didn't complete
+    // (abandoned + in progress) / (total - never started), or 0 if none started
+    const started = segments.total - segments.neverStarted;
+    const dropOffRate =
+      started > 0
+        ? Math.round(((started - segments.completed) / started) * 100)
+        : 0;
+
+    return {
+      courseId: course.id,
+      courseTitle: course.title,
+      lessonFunnel,
+      moduleFunnel,
+      segments,
+      dropOffRate,
+    };
+  });
 }

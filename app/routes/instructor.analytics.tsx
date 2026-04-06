@@ -12,6 +12,7 @@ import {
   getPerCourseEnrollments,
   getPerCourseCompletionRates,
   getQuizPerformanceByCourse,
+  getDropOffAnalysis,
 } from "~/services/analyticsService";
 import type {
   TrendDataPoint,
@@ -19,6 +20,10 @@ import type {
   CourseEnrollmentRow,
   CourseCompletionRow,
   CourseQuizPerformanceRow,
+  CourseDropOffData,
+  LessonFunnelRow,
+  ModuleFunnelRow,
+  StudentSegmentCounts,
 } from "~/services/analyticsService";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -27,13 +32,16 @@ import { Label } from "~/components/ui/label";
 import { Button } from "~/components/ui/button";
 import {
   AlertTriangle,
+  ChevronDown,
   DollarSign,
   Users,
   GraduationCap,
   Target,
+  TrendingDown,
 } from "lucide-react";
 import { data, isRouteErrorResponse } from "react-router";
 import { UserRole } from "~/db/schema";
+import { useState } from "react";
 import {
   LineChart,
   Line,
@@ -79,6 +87,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const dateRange = from || to ? { from, to } : undefined;
 
   const serviceOpts = { instructorId: currentUserId, dateRange };
+  const now = new Date().toISOString();
 
   return {
     totalRevenue: getTotalRevenue(serviceOpts),
@@ -90,6 +99,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     perCourseEnrollments: getPerCourseEnrollments(serviceOpts),
     perCourseCompletionRates: getPerCourseCompletionRates(serviceOpts),
     quizPerformance: getQuizPerformanceByCourse(serviceOpts),
+    dropOffAnalysis: getDropOffAnalysis({ ...serviceOpts, now }),
   };
 }
 
@@ -401,6 +411,212 @@ function QuizPerformanceTable(props: { data: CourseQuizPerformanceRow[] }) {
   );
 }
 
+// ─── Drop-off Analysis Components ───
+
+const SEGMENT_COLORS = {
+  neverStarted: "hsl(var(--muted-foreground))",
+  inProgress: "hsl(210, 80%, 55%)",
+  abandoned: "hsl(0, 70%, 55%)",
+  completed: "hsl(145, 65%, 42%)",
+};
+
+function LessonFunnelChart(props: { data: LessonFunnelRow[] }) {
+  if (props.data.length === 0) {
+    return (
+      <p className="py-4 text-center text-sm text-muted-foreground">
+        No lesson data available.
+      </p>
+    );
+  }
+
+  const chartData = props.data.map((d) => ({
+    name: d.lessonTitle,
+    percent: d.completionPercent,
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height={Math.max(200, props.data.length * 40)}>
+      <BarChart data={chartData} layout="vertical" margin={{ left: 20 }}>
+        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+        <XAxis
+          type="number"
+          domain={[0, 100]}
+          tick={{ fontSize: 12 }}
+          className="fill-muted-foreground"
+          tickFormatter={(v: number) => `${v}%`}
+        />
+        <YAxis
+          type="category"
+          dataKey="name"
+          tick={{ fontSize: 12 }}
+          className="fill-muted-foreground"
+          width={120}
+        />
+        <Tooltip formatter={(value) => [`${value}%`, "Completed"]} />
+        <Bar dataKey="percent" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function ModuleFunnelChart(props: { data: ModuleFunnelRow[] }) {
+  if (props.data.length === 0) {
+    return (
+      <p className="py-4 text-center text-sm text-muted-foreground">
+        No module data available.
+      </p>
+    );
+  }
+
+  const chartData = props.data.map((d) => ({
+    name: d.moduleTitle,
+    percent: d.completionPercent,
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height={Math.max(200, props.data.length * 50)}>
+      <BarChart data={chartData} layout="vertical" margin={{ left: 20 }}>
+        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+        <XAxis
+          type="number"
+          domain={[0, 100]}
+          tick={{ fontSize: 12 }}
+          className="fill-muted-foreground"
+          tickFormatter={(v: number) => `${v}%`}
+        />
+        <YAxis
+          type="category"
+          dataKey="name"
+          tick={{ fontSize: 12 }}
+          className="fill-muted-foreground"
+          width={120}
+        />
+        <Tooltip formatter={(value) => [`${value}%`, "Completed"]} />
+        <Bar dataKey="percent" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function StudentSegmentsDisplay(props: { segments: StudentSegmentCounts }) {
+  const { segments } = props;
+
+  if (segments.total === 0) {
+    return (
+      <p className="py-4 text-center text-sm text-muted-foreground">
+        No enrollment data available.
+      </p>
+    );
+  }
+
+  const items = [
+    { label: "Never Started", count: segments.neverStarted, color: SEGMENT_COLORS.neverStarted },
+    { label: "In Progress", count: segments.inProgress, color: SEGMENT_COLORS.inProgress },
+    { label: "Abandoned", count: segments.abandoned, color: SEGMENT_COLORS.abandoned },
+    { label: "Completed", count: segments.completed, color: SEGMENT_COLORS.completed },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {items.map((item) => (
+        <div key={item.label} className="rounded-lg border p-3 text-center">
+          <div
+            className="mx-auto mb-1 size-2.5 rounded-full"
+            style={{ backgroundColor: item.color }}
+          />
+          <div className="text-lg font-bold">{item.count}</div>
+          <div className="text-xs text-muted-foreground">{item.label}</div>
+          <div className="text-xs text-muted-foreground">
+            {segments.total > 0
+              ? `${Math.round((item.count / segments.total) * 100)}%`
+              : "0%"}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CourseDropOffCard(props: { data: CourseDropOffData }) {
+  const [expanded, setExpanded] = useState(false);
+  const { data } = props;
+
+  return (
+    <Card>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between p-6 text-left"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div>
+          <h3 className="text-base font-semibold">{data.courseTitle}</h3>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {data.segments.total} enrolled &middot; {data.dropOffRate}% drop-off
+            rate
+          </p>
+        </div>
+        <ChevronDown
+          className={`size-5 text-muted-foreground transition-transform ${
+            expanded ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {expanded && (
+        <CardContent className="space-y-6 border-t pt-6">
+          <div>
+            <h4 className="mb-3 text-sm font-medium">Student Segments</h4>
+            <StudentSegmentsDisplay segments={data.segments} />
+          </div>
+
+          <div>
+            <h4 className="mb-3 text-sm font-medium">Lesson-by-Lesson Funnel</h4>
+            <LessonFunnelChart data={data.lessonFunnel} />
+          </div>
+
+          <div>
+            <h4 className="mb-3 text-sm font-medium">Module-Level Funnel</h4>
+            <ModuleFunnelChart data={data.moduleFunnel} />
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+function DropOffAnalysisSection(props: { data: CourseDropOffData[] }) {
+  if (props.data.length === 0) {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        No course data available for drop-off analysis.
+      </p>
+    );
+  }
+
+  // Find course with highest drop-off rate
+  const highestDropOff = props.data.reduce((max, course) =>
+    course.dropOffRate > max.dropOffRate ? course : max
+  );
+
+  return (
+    <div className="space-y-4">
+      {highestDropOff.dropOffRate > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+          <TrendingDown className="size-4 shrink-0 text-destructive" />
+          <span>
+            <strong>{highestDropOff.courseTitle}</strong> has the highest drop-off
+            rate at {highestDropOff.dropOffRate}%
+          </span>
+        </div>
+      )}
+
+      {props.data.map((course) => (
+        <CourseDropOffCard key={course.courseId} data={course} />
+      ))}
+    </div>
+  );
+}
+
 // ─── Skeleton / Fallback ───
 
 export function HydrateFallback() {
@@ -545,7 +761,7 @@ export default function InstructorAnalytics({
       </div>
 
       {/* Per-Course Enrollments, Completion Rates, Quiz Performance */}
-      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="mb-8 grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
         <Card>
           <CardHeader>
             <h2 className="text-lg font-semibold">Enrollments by Course</h2>
@@ -572,6 +788,12 @@ export default function InstructorAnalytics({
             <QuizPerformanceTable data={loaderData.quizPerformance} />
           </CardContent>
         </Card>
+      </div>
+
+      {/* Drop-off Analysis */}
+      <div>
+        <h2 className="mb-4 text-lg font-semibold">Drop-off Analysis</h2>
+        <DropOffAnalysisSection data={loaderData.dropOffAnalysis} />
       </div>
     </div>
   );
