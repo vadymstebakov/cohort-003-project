@@ -1,7 +1,7 @@
 import { Link, useSearchParams, useNavigate } from "react-router";
 import type { Route } from "./+types/instructor.analytics";
 import { getCurrentUserId } from "~/lib/session";
-import { getUserById } from "~/services/userService";
+import { getUserById, getUsersByRole } from "~/services/userService";
 import {
   getTotalRevenue,
   getTotalEnrollments,
@@ -25,6 +25,13 @@ import type {
   ModuleFunnelRow,
   StudentSegmentCounts,
 } from "~/services/analyticsService";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Input } from "~/components/ui/input";
@@ -42,17 +49,14 @@ import {
 import { data, isRouteErrorResponse } from "react-router";
 import { UserRole } from "~/db/schema";
 import { useState } from "react";
+import { LineChart, Line, BarChart, Bar } from "recharts";
 import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+  ChartTooltip,
+  ChartGrid,
+  ChartXAxis,
+  ChartYAxis,
+  ChartContainer,
+} from "~/components/ui/chart";
 
 export function meta() {
   return [
@@ -81,15 +85,37 @@ export async function loader({ request }: Route.LoaderArgs) {
     });
   }
 
+  const isAdmin = user.role === UserRole.Admin;
+
   const url = new URL(request.url);
   const from = url.searchParams.get("from") ?? undefined;
   const to = url.searchParams.get("to") ?? undefined;
   const dateRange = from || to ? { from, to } : undefined;
 
-  const serviceOpts = { instructorId: currentUserId, dateRange };
+  // Admins can view any instructor's data via the instructorId search param
+  let targetInstructorId = currentUserId;
+  const instructors = isAdmin ? getUsersByRole(UserRole.Instructor) : [];
+
+  if (isAdmin) {
+    const selectedId = url.searchParams.get("instructorId");
+    if (selectedId) {
+      const parsed = Number(selectedId);
+      if (!Number.isNaN(parsed) && instructors.some((i) => i.id === parsed)) {
+        targetInstructorId = parsed;
+      }
+    } else if (instructors.length > 0) {
+      // Default to the first instructor if admin hasn't selected one
+      targetInstructorId = instructors[0].id;
+    }
+  }
+
+  const serviceOpts = { instructorId: targetInstructorId, dateRange };
   const now = new Date().toISOString();
 
   return {
+    isAdmin,
+    instructors,
+    selectedInstructorId: targetInstructorId,
     totalRevenue: getTotalRevenue(serviceOpts),
     totalEnrollments: getTotalEnrollments(serviceOpts),
     averageCompletionRate: getAverageCompletionRate(serviceOpts),
@@ -149,7 +175,9 @@ function DateRangePicker() {
     const newFrom = formData.get("from") as string;
     const newTo = formData.get("to") as string;
 
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(searchParams);
+    params.delete("from");
+    params.delete("to");
     if (newFrom) params.set("from", `${newFrom}T00:00:00.000Z`);
     if (newTo) params.set("to", `${newTo}T23:59:59.999Z`);
 
@@ -157,7 +185,10 @@ function DateRangePicker() {
   }
 
   function handleClear() {
-    navigate("?");
+    const params = new URLSearchParams(searchParams);
+    params.delete("from");
+    params.delete("to");
+    navigate(`?${params.toString()}`);
   }
 
   return (
@@ -198,6 +229,45 @@ function DateRangePicker() {
   );
 }
 
+// ─── Instructor Selector (Admin only) ───
+
+function InstructorSelector(props: {
+  instructors: { id: number; name: string }[];
+  selectedId: number;
+}) {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  function handleChange(value: string) {
+    const params = new URLSearchParams(searchParams);
+    params.set("instructorId", value);
+    navigate(`?${params.toString()}`);
+  }
+
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">
+        Viewing as instructor
+      </Label>
+      <Select
+        value={String(props.selectedId)}
+        onValueChange={handleChange}
+      >
+        <SelectTrigger className="w-[240px]">
+          <SelectValue placeholder="Select instructor…" />
+        </SelectTrigger>
+        <SelectContent>
+          {props.instructors.map((instructor) => (
+            <SelectItem key={instructor.id} value={String(instructor.id)}>
+              {instructor.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 // ─── Chart Components ───
 
 function formatGranularityLabel(granularity: Granularity): string {
@@ -233,31 +303,24 @@ function RevenueTrendChart(props: {
       <p className="mb-2 text-xs text-muted-foreground">
         {formatGranularityLabel(props.granularity)} trend
       </p>
-      <ResponsiveContainer width="100%" height={300}>
+      <ChartContainer width="100%" height={300}>
         <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-          <XAxis
-            dataKey="period"
-            tick={{ fontSize: 12 }}
-            className="fill-muted-foreground"
-          />
-          <YAxis
-            tick={{ fontSize: 12 }}
-            className="fill-muted-foreground"
-            tickFormatter={(v: number) => `$${v}`}
-          />
-          <Tooltip
+          <ChartGrid />
+          <ChartXAxis dataKey="period" />
+          <ChartYAxis tickFormatter={(v: number) => `$${v}`} />
+          <ChartTooltip
             formatter={(value) => [`$${Number(value).toFixed(2)}`, "Revenue"]}
           />
           <Line
             type="monotone"
             dataKey="revenue"
-            stroke="hsl(var(--primary))"
+            className="stroke-chart-1"
+            stroke="var(--chart-1)"
             strokeWidth={2}
             dot={{ r: 3 }}
           />
         </LineChart>
-      </ResponsiveContainer>
+      </ChartContainer>
     </div>
   );
 }
@@ -279,29 +342,22 @@ function EnrollmentTrendChart(props: {
       <p className="mb-2 text-xs text-muted-foreground">
         {formatGranularityLabel(props.granularity)} trend
       </p>
-      <ResponsiveContainer width="100%" height={300}>
+      <ChartContainer width="100%" height={300}>
         <BarChart data={props.data}>
-          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-          <XAxis
-            dataKey="period"
-            tick={{ fontSize: 12 }}
-            className="fill-muted-foreground"
-          />
-          <YAxis
-            tick={{ fontSize: 12 }}
-            className="fill-muted-foreground"
-            allowDecimals={false}
-          />
-          <Tooltip
+          <ChartGrid />
+          <ChartXAxis dataKey="period" />
+          <ChartYAxis allowDecimals={false} />
+          <ChartTooltip
             formatter={(value) => [value, "Enrollments"]}
           />
           <Bar
             dataKey="value"
-            fill="hsl(var(--primary))"
+            className="fill-chart-2"
+            fill="var(--chart-2)"
             radius={[4, 4, 0, 0]}
           />
         </BarChart>
-      </ResponsiveContainer>
+      </ChartContainer>
     </div>
   );
 }
@@ -435,27 +491,19 @@ function LessonFunnelChart(props: { data: LessonFunnelRow[] }) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={Math.max(200, props.data.length * 40)}>
+    <ChartContainer width="100%" height={Math.max(200, props.data.length * 40)}>
       <BarChart data={chartData} layout="vertical" margin={{ left: 20 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-        <XAxis
+        <ChartGrid />
+        <ChartXAxis
           type="number"
           domain={[0, 100]}
-          tick={{ fontSize: 12 }}
-          className="fill-muted-foreground"
           tickFormatter={(v: number) => `${v}%`}
         />
-        <YAxis
-          type="category"
-          dataKey="name"
-          tick={{ fontSize: 12 }}
-          className="fill-muted-foreground"
-          width={120}
-        />
-        <Tooltip formatter={(value) => [`${value}%`, "Completed"]} />
-        <Bar dataKey="percent" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+        <ChartYAxis type="category" dataKey="name" width={120} />
+        <ChartTooltip formatter={(value) => [`${value}%`, "Completed"]} />
+        <Bar dataKey="percent" className="fill-chart-1" fill="var(--chart-1)" radius={[0, 4, 4, 0]} />
       </BarChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 }
 
@@ -474,27 +522,19 @@ function ModuleFunnelChart(props: { data: ModuleFunnelRow[] }) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={Math.max(200, props.data.length * 50)}>
+    <ChartContainer width="100%" height={Math.max(200, props.data.length * 50)}>
       <BarChart data={chartData} layout="vertical" margin={{ left: 20 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-        <XAxis
+        <ChartGrid />
+        <ChartXAxis
           type="number"
           domain={[0, 100]}
-          tick={{ fontSize: 12 }}
-          className="fill-muted-foreground"
           tickFormatter={(v: number) => `${v}%`}
         />
-        <YAxis
-          type="category"
-          dataKey="name"
-          tick={{ fontSize: 12 }}
-          className="fill-muted-foreground"
-          width={120}
-        />
-        <Tooltip formatter={(value) => [`${value}%`, "Completed"]} />
-        <Bar dataKey="percent" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+        <ChartYAxis type="category" dataKey="name" width={120} />
+        <ChartTooltip formatter={(value) => [`${value}%`, "Completed"]} />
+        <Bar dataKey="percent" className="fill-chart-1" fill="var(--chart-1)" radius={[0, 4, 4, 0]} />
       </BarChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 }
 
@@ -703,8 +743,14 @@ export default function InstructorAnalytics({
         </p>
       </div>
 
-      {/* Date Range Picker */}
-      <div className="mb-8">
+      {/* Admin Instructor Selector + Date Range Picker */}
+      <div className="mb-8 flex flex-wrap items-end gap-6">
+        {loaderData.isAdmin && loaderData.instructors.length > 0 && (
+          <InstructorSelector
+            instructors={loaderData.instructors}
+            selectedId={loaderData.selectedInstructorId}
+          />
+        )}
         <DateRangePicker />
       </div>
 
