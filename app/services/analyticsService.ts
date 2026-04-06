@@ -15,6 +15,7 @@ import {
 // Aggregated analytics queries for the instructor dashboard.
 // All date boundaries are passed as parameters (no internal Date.now()).
 // Uses SQL-level aggregation for performance.
+// All functions accept courseIds directly to avoid redundant lookups.
 
 export interface DateRange {
   from?: string;
@@ -50,7 +51,7 @@ export interface CourseQuizPerformanceRow {
   averageScore: number;
 }
 
-function getCourseIdsForInstructor(instructorId: number): number[] {
+export function getCourseIdsForInstructor(instructorId: number): number[] {
   const rows = db
     .select({ id: courses.id })
     .from(courses)
@@ -60,14 +61,15 @@ function getCourseIdsForInstructor(instructorId: number): number[] {
   return rows.map((r) => r.id);
 }
 
-export function getTotalRevenue(opts: {
-  instructorId: number;
+interface ServiceOpts {
+  courseIds: number[];
   dateRange?: DateRange;
-}): number {
-  const courseIds = getCourseIdsForInstructor(opts.instructorId);
-  if (courseIds.length === 0) return 0;
+}
 
-  const conditions = [inArray(purchases.courseId, courseIds)];
+export function getTotalRevenue(opts: ServiceOpts): number {
+  if (opts.courseIds.length === 0) return 0;
+
+  const conditions = [inArray(purchases.courseId, opts.courseIds)];
 
   if (opts.dateRange?.from) {
     conditions.push(gte(purchases.createdAt, opts.dateRange.from));
@@ -85,14 +87,10 @@ export function getTotalRevenue(opts: {
   return result?.total ?? 0;
 }
 
-export function getTotalEnrollments(opts: {
-  instructorId: number;
-  dateRange?: DateRange;
-}): number {
-  const courseIds = getCourseIdsForInstructor(opts.instructorId);
-  if (courseIds.length === 0) return 0;
+export function getTotalEnrollments(opts: ServiceOpts): number {
+  if (opts.courseIds.length === 0) return 0;
 
-  const conditions = [inArray(enrollments.courseId, courseIds)];
+  const conditions = [inArray(enrollments.courseId, opts.courseIds)];
 
   if (opts.dateRange?.from) {
     conditions.push(gte(enrollments.enrolledAt, opts.dateRange.from));
@@ -110,14 +108,10 @@ export function getTotalEnrollments(opts: {
   return result?.count ?? 0;
 }
 
-export function getAverageCompletionRate(opts: {
-  instructorId: number;
-  dateRange?: DateRange;
-}): number {
-  const courseIds = getCourseIdsForInstructor(opts.instructorId);
-  if (courseIds.length === 0) return 0;
+export function getAverageCompletionRate(opts: ServiceOpts): number {
+  if (opts.courseIds.length === 0) return 0;
 
-  const conditions = [inArray(enrollments.courseId, courseIds)];
+  const conditions = [inArray(enrollments.courseId, opts.courseIds)];
 
   if (opts.dateRange?.from) {
     conditions.push(gte(enrollments.enrolledAt, opts.dateRange.from));
@@ -140,12 +134,8 @@ export function getAverageCompletionRate(opts: {
   return Math.round((result.completed / result.total) * 100);
 }
 
-export function getAverageQuizPassRate(opts: {
-  instructorId: number;
-  dateRange?: DateRange;
-}): number {
-  const courseIds = getCourseIdsForInstructor(opts.instructorId);
-  if (courseIds.length === 0) return 0;
+export function getAverageQuizPassRate(opts: ServiceOpts): number {
+  if (opts.courseIds.length === 0) return 0;
 
   // Get all quiz IDs for the instructor's courses
   const quizRows = db
@@ -153,7 +143,7 @@ export function getAverageQuizPassRate(opts: {
     .from(quizzes)
     .innerJoin(lessons, eq(quizzes.lessonId, lessons.id))
     .innerJoin(modules, eq(lessons.moduleId, modules.id))
-    .where(inArray(modules.courseId, courseIds))
+    .where(inArray(modules.courseId, opts.courseIds))
     .all();
 
   const quizIds = quizRows.map((r) => r.quizId);
@@ -169,8 +159,6 @@ export function getAverageQuizPassRate(opts: {
     conditions.push(lte(quizAttempts.attemptedAt, opts.dateRange.to));
   }
 
-  // Use a subquery approach: for each (userId, quizId), get max score, then check if passed
-  // Simpler approach: get best attempt per student per quiz using GROUP BY with MAX score
   const result = db
     .select({
       total: sql<number>`count(*)`,
@@ -226,15 +214,14 @@ function getSqlDateTrunc(
   }
 }
 
-export function getRevenueTrend(opts: {
-  instructorId: number;
-  dateRange?: DateRange;
-}): { data: TrendDataPoint[]; granularity: Granularity } {
-  const courseIds = getCourseIdsForInstructor(opts.instructorId);
-  if (courseIds.length === 0) return { data: [], granularity: "monthly" };
+export function getRevenueTrend(opts: ServiceOpts): {
+  data: TrendDataPoint[];
+  granularity: Granularity;
+} {
+  if (opts.courseIds.length === 0) return { data: [], granularity: "monthly" };
 
   const granularity = determineGranularity(opts.dateRange);
-  const conditions = [inArray(purchases.courseId, courseIds)];
+  const conditions = [inArray(purchases.courseId, opts.courseIds)];
 
   if (opts.dateRange?.from) {
     conditions.push(gte(purchases.createdAt, opts.dateRange.from));
@@ -262,15 +249,14 @@ export function getRevenueTrend(opts: {
   return { data: rows, granularity };
 }
 
-export function getEnrollmentTrend(opts: {
-  instructorId: number;
-  dateRange?: DateRange;
-}): { data: TrendDataPoint[]; granularity: Granularity } {
-  const courseIds = getCourseIdsForInstructor(opts.instructorId);
-  if (courseIds.length === 0) return { data: [], granularity: "monthly" };
+export function getEnrollmentTrend(opts: ServiceOpts): {
+  data: TrendDataPoint[];
+  granularity: Granularity;
+} {
+  if (opts.courseIds.length === 0) return { data: [], granularity: "monthly" };
 
   const granularity = determineGranularity(opts.dateRange);
-  const conditions = [inArray(enrollments.courseId, courseIds)];
+  const conditions = [inArray(enrollments.courseId, opts.courseIds)];
 
   if (opts.dateRange?.from) {
     conditions.push(gte(enrollments.enrolledAt, opts.dateRange.from));
@@ -298,14 +284,10 @@ export function getEnrollmentTrend(opts: {
   return { data: rows, granularity };
 }
 
-export function getPerCourseEnrollments(opts: {
-  instructorId: number;
-  dateRange?: DateRange;
-}): CourseEnrollmentRow[] {
-  const courseIds = getCourseIdsForInstructor(opts.instructorId);
-  if (courseIds.length === 0) return [];
+export function getPerCourseEnrollments(opts: ServiceOpts): CourseEnrollmentRow[] {
+  if (opts.courseIds.length === 0) return [];
 
-  const conditions = [inArray(enrollments.courseId, courseIds)];
+  const conditions = [inArray(enrollments.courseId, opts.courseIds)];
 
   if (opts.dateRange?.from) {
     conditions.push(gte(enrollments.enrolledAt, opts.dateRange.from));
@@ -332,14 +314,10 @@ export function getPerCourseEnrollments(opts: {
   return rows;
 }
 
-export function getPerCourseCompletionRates(opts: {
-  instructorId: number;
-  dateRange?: DateRange;
-}): CourseCompletionRow[] {
-  const courseIds = getCourseIdsForInstructor(opts.instructorId);
-  if (courseIds.length === 0) return [];
+export function getPerCourseCompletionRates(opts: ServiceOpts): CourseCompletionRow[] {
+  if (opts.courseIds.length === 0) return [];
 
-  const conditions = [inArray(enrollments.courseId, courseIds)];
+  const conditions = [inArray(enrollments.courseId, opts.courseIds)];
 
   if (opts.dateRange?.from) {
     conditions.push(gte(enrollments.enrolledAt, opts.dateRange.from));
@@ -371,6 +349,109 @@ export function getPerCourseCompletionRates(opts: {
         ? Math.round((r.completedCount / r.totalEnrolled) * 100)
         : 0,
   }));
+}
+
+// ─── Quiz Performance (single query, no N+1) ───
+
+export function getQuizPerformanceByCourse(opts: ServiceOpts): CourseQuizPerformanceRow[] {
+  if (opts.courseIds.length === 0) return [];
+
+  // Get all quizzes for the instructor's courses with course info
+  const quizRows = db
+    .select({
+      courseId: modules.courseId,
+      courseTitle: courses.title,
+      quizId: quizzes.id,
+    })
+    .from(quizzes)
+    .innerJoin(lessons, eq(quizzes.lessonId, lessons.id))
+    .innerJoin(modules, eq(lessons.moduleId, modules.id))
+    .innerJoin(courses, eq(modules.courseId, courses.id))
+    .where(inArray(modules.courseId, opts.courseIds))
+    .all();
+
+  if (quizRows.length === 0) return [];
+
+  // Group quizzes by course to get quiz counts
+  const courseQuizMap = new Map<
+    number,
+    { courseTitle: string; quizIds: number[] }
+  >();
+  for (const row of quizRows) {
+    const existing = courseQuizMap.get(row.courseId);
+    if (existing) {
+      existing.quizIds.push(row.quizId);
+    } else {
+      courseQuizMap.set(row.courseId, {
+        courseTitle: row.courseTitle,
+        quizIds: [row.quizId],
+      });
+    }
+  }
+
+  // Single query: best attempt per student per quiz, aggregated by course
+  const allQuizIds = quizRows.map((r) => r.quizId);
+  const attemptConditions = [inArray(quizAttempts.quizId, allQuizIds)];
+
+  if (opts.dateRange?.from) {
+    attemptConditions.push(gte(quizAttempts.attemptedAt, opts.dateRange.from));
+  }
+  if (opts.dateRange?.to) {
+    attemptConditions.push(lte(quizAttempts.attemptedAt, opts.dateRange.to));
+  }
+
+  // Build a quizId->courseId lookup using SQL via a CTE-like approach
+  // We join best_attempts with the quiz->course chain to aggregate by course
+  const bestAttempts = db
+    .select({
+      quizId: quizAttempts.quizId,
+      maxPassed: sql<number>`max(${quizAttempts.passed})`.as("max_passed"),
+      maxScore: sql<number>`max(${quizAttempts.score})`.as("max_score"),
+    })
+    .from(quizAttempts)
+    .where(and(...attemptConditions))
+    .groupBy(quizAttempts.userId, quizAttempts.quizId)
+    .as("best_attempts");
+
+  const courseStats = db
+    .select({
+      courseId: modules.courseId,
+      total: sql<number>`count(*)`.as("total"),
+      passed: sql<number>`sum(case when ${bestAttempts.maxPassed} = 1 then 1 else 0 end)`.as("passed"),
+      avgScore: sql<number>`avg(${bestAttempts.maxScore})`.as("avg_score"),
+    })
+    .from(bestAttempts)
+    .innerJoin(quizzes, eq(bestAttempts.quizId, quizzes.id))
+    .innerJoin(lessons, eq(quizzes.lessonId, lessons.id))
+    .innerJoin(modules, eq(lessons.moduleId, modules.id))
+    .groupBy(modules.courseId)
+    .all();
+
+  const statsMap = new Map(courseStats.map((r) => [r.courseId, r]));
+
+  const results: CourseQuizPerformanceRow[] = [];
+  for (const [courseId, { courseTitle, quizIds }] of courseQuizMap) {
+    const stats = statsMap.get(courseId);
+    if (stats && stats.total > 0) {
+      results.push({
+        courseId,
+        courseTitle,
+        quizCount: quizIds.length,
+        averagePassRate: Math.round((stats.passed / stats.total) * 100),
+        averageScore: Math.round(stats.avgScore * 100),
+      });
+    } else {
+      results.push({
+        courseId,
+        courseTitle,
+        quizCount: quizIds.length,
+        averagePassRate: 0,
+        averageScore: 0,
+      });
+    }
+  }
+
+  return results;
 }
 
 // ─── Phase 3: Drop-off Analysis types ───
@@ -416,104 +497,6 @@ export interface CourseDropOffData {
   dropOffRate: number;
 }
 
-export function getQuizPerformanceByCourse(opts: {
-  instructorId: number;
-  dateRange?: DateRange;
-}): CourseQuizPerformanceRow[] {
-  const courseIds = getCourseIdsForInstructor(opts.instructorId);
-  if (courseIds.length === 0) return [];
-
-  // Get all quizzes for the instructor's courses, grouped by course
-  const quizRows = db
-    .select({
-      courseId: modules.courseId,
-      courseTitle: courses.title,
-      quizId: quizzes.id,
-    })
-    .from(quizzes)
-    .innerJoin(lessons, eq(quizzes.lessonId, lessons.id))
-    .innerJoin(modules, eq(lessons.moduleId, modules.id))
-    .innerJoin(courses, eq(modules.courseId, courses.id))
-    .where(inArray(modules.courseId, courseIds))
-    .all();
-
-  if (quizRows.length === 0) return [];
-
-  // Group quizzes by course
-  const courseQuizMap = new Map<
-    number,
-    { courseTitle: string; quizIds: number[] }
-  >();
-  for (const row of quizRows) {
-    const existing = courseQuizMap.get(row.courseId);
-    if (existing) {
-      existing.quizIds.push(row.quizId);
-    } else {
-      courseQuizMap.set(row.courseId, {
-        courseTitle: row.courseTitle,
-        quizIds: [row.quizId],
-      });
-    }
-  }
-
-  const results: CourseQuizPerformanceRow[] = [];
-
-  for (const [courseId, { courseTitle, quizIds }] of courseQuizMap) {
-    const conditions = [inArray(quizAttempts.quizId, quizIds)];
-
-    if (opts.dateRange?.from) {
-      conditions.push(gte(quizAttempts.attemptedAt, opts.dateRange.from));
-    }
-    if (opts.dateRange?.to) {
-      conditions.push(lte(quizAttempts.attemptedAt, opts.dateRange.to));
-    }
-
-    // Best attempt per student per quiz
-    const row = db
-      .select({
-        total: sql<number>`count(*)`,
-        passed: sql<number>`sum(case when max_passed = 1 then 1 else 0 end)`,
-        avgScore: sql<number>`avg(max_score)`,
-      })
-      .from(
-        db
-          .select({
-            userId: quizAttempts.userId,
-            quizId: quizAttempts.quizId,
-            max_passed: sql<number>`max(${quizAttempts.passed})`.as(
-              "max_passed"
-            ),
-            max_score: sql<number>`max(${quizAttempts.score})`.as("max_score"),
-          })
-          .from(quizAttempts)
-          .where(and(...conditions))
-          .groupBy(quizAttempts.userId, quizAttempts.quizId)
-          .as("best_attempts")
-      )
-      .get();
-
-    if (row && row.total > 0) {
-      results.push({
-        courseId,
-        courseTitle,
-        quizCount: quizIds.length,
-        averagePassRate: Math.round((row.passed / row.total) * 100),
-        averageScore: Math.round(row.avgScore * 100),
-      });
-    } else {
-      results.push({
-        courseId,
-        courseTitle,
-        quizCount: quizIds.length,
-        averagePassRate: 0,
-        averageScore: 0,
-      });
-    }
-  }
-
-  return results;
-}
-
 // ─── Phase 3: Drop-off Analysis queries ───
 
 export function getLessonFunnel(opts: {
@@ -554,15 +537,14 @@ export function getLessonFunnel(opts: {
 
   if (lessonRows.length === 0) return [];
 
-  // Get enrolled user IDs for the date range
-  const enrolledUsers = db
+  // Use a subquery for enrolled user IDs instead of materializing the array
+  const enrolledUsersSq = db
     .select({ userId: enrollments.userId })
     .from(enrollments)
     .where(and(...enrollmentConditions))
-    .all()
-    .map((r) => r.userId);
+    .as("enrolled_users");
 
-  // Count completions per lesson among enrolled students
+  // Count completions per lesson among enrolled students in a single query
   const lessonIds = lessonRows.map((r) => r.lessonId);
 
   const completionRows = db
@@ -573,10 +555,10 @@ export function getLessonFunnel(opts: {
       ),
     })
     .from(lessonProgress)
+    .innerJoin(enrolledUsersSq, eq(lessonProgress.userId, enrolledUsersSq.userId))
     .where(
       and(
         inArray(lessonProgress.lessonId, lessonIds),
-        inArray(lessonProgress.userId, enrolledUsers),
         sql`${lessonProgress.completedAt} is not null`
       )
     )
@@ -625,14 +607,6 @@ export function getModuleFunnel(opts: {
   const totalEnrolled = enrolledResult?.count ?? 0;
   if (totalEnrolled === 0) return [];
 
-  // Get enrolled user IDs
-  const enrolledUsers = db
-    .select({ userId: enrollments.userId })
-    .from(enrollments)
-    .where(and(...enrollmentConditions))
-    .all()
-    .map((r) => r.userId);
-
   // Get modules for this course
   const moduleRows = db
     .select({
@@ -647,60 +621,88 @@ export function getModuleFunnel(opts: {
 
   if (moduleRows.length === 0) return [];
 
-  return moduleRows.map((mod) => {
-    // Get all lessons in this module
-    const moduleLessons = db
-      .select({ id: lessons.id })
-      .from(lessons)
-      .where(eq(lessons.moduleId, mod.moduleId))
-      .all();
+  // Batch: get lesson counts per module in a single query
+  const moduleIds = moduleRows.map((m) => m.moduleId);
 
-    const lessonCount = moduleLessons.length;
-    if (lessonCount === 0) {
-      return {
-        moduleId: mod.moduleId,
-        moduleTitle: mod.moduleTitle,
-        position: mod.position,
-        lessonCount: 0,
-        completedCount: 0,
-        completionPercent: 0,
-      };
-    }
+  const lessonCountRows = db
+    .select({
+      moduleId: lessons.moduleId,
+      lessonCount: sql<number>`count(*)`.as("lesson_count"),
+    })
+    .from(lessons)
+    .where(inArray(lessons.moduleId, moduleIds))
+    .groupBy(lessons.moduleId)
+    .all();
 
-    const lessonIds = moduleLessons.map((l) => l.id);
+  const lessonCountMap = new Map(
+    lessonCountRows.map((r) => [r.moduleId, r.lessonCount])
+  );
 
-    // Count students who completed ALL lessons in this module
-    // A student completes a module if they have a completed lessonProgress for every lesson
-    const completedStudents = db
-      .select({
-        count: sql<number>`count(*)`.as("count"),
-      })
-      .from(
-        db
-          .select({
-            userId: lessonProgress.userId,
-            completedLessons:
-              sql<number>`count(distinct ${lessonProgress.lessonId})`.as(
-                "completed_lessons"
-              ),
-          })
-          .from(lessonProgress)
-          .where(
-            and(
-              inArray(lessonProgress.lessonId, lessonIds),
-              inArray(lessonProgress.userId, enrolledUsers),
-              sql`${lessonProgress.completedAt} is not null`
-            )
-          )
-          .groupBy(lessonProgress.userId)
-          .having(
-            sql`count(distinct ${lessonProgress.lessonId}) = ${lessonCount}`
-          )
-          .as("module_completers")
+  // Batch: for each module, count students who completed ALL lessons
+  // Uses a subquery for enrolled users
+  const enrolledUsersSq = db
+    .select({ userId: enrollments.userId })
+    .from(enrollments)
+    .where(and(...enrollmentConditions))
+    .as("enrolled_users");
+
+  // Single query: count completed lessons per user per module, then filter for full completion
+  const allLessonRows = db
+    .select({
+      lessonId: lessons.id,
+      moduleId: lessons.moduleId,
+    })
+    .from(lessons)
+    .where(inArray(lessons.moduleId, moduleIds))
+    .all();
+
+  const allLessonIds = allLessonRows.map((l) => l.lessonId);
+
+  if (allLessonIds.length === 0) {
+    return moduleRows.map((mod) => ({
+      moduleId: mod.moduleId,
+      moduleTitle: mod.moduleTitle,
+      position: mod.position,
+      lessonCount: 0,
+      completedCount: 0,
+      completionPercent: 0,
+    }));
+  }
+
+  // Get per-user, per-module completed lesson counts in a single query
+  const userModuleProgress = db
+    .select({
+      userId: lessonProgress.userId,
+      moduleId: lessons.moduleId,
+      completedLessons: sql<number>`count(distinct ${lessonProgress.lessonId})`.as("completed_lessons"),
+    })
+    .from(lessonProgress)
+    .innerJoin(lessons, eq(lessonProgress.lessonId, lessons.id))
+    .innerJoin(enrolledUsersSq, eq(lessonProgress.userId, enrolledUsersSq.userId))
+    .where(
+      and(
+        inArray(lessonProgress.lessonId, allLessonIds),
+        sql`${lessonProgress.completedAt} is not null`
       )
-      .get();
+    )
+    .groupBy(lessonProgress.userId, lessons.moduleId)
+    .all();
 
-    const completedCount = completedStudents?.count ?? 0;
+  // Count students who completed all lessons per module
+  const moduleCompletionMap = new Map<number, number>();
+  for (const row of userModuleProgress) {
+    const requiredCount = lessonCountMap.get(row.moduleId) ?? 0;
+    if (requiredCount > 0 && row.completedLessons >= requiredCount) {
+      moduleCompletionMap.set(
+        row.moduleId,
+        (moduleCompletionMap.get(row.moduleId) ?? 0) + 1
+      );
+    }
+  }
+
+  return moduleRows.map((mod) => {
+    const lessonCount = lessonCountMap.get(mod.moduleId) ?? 0;
+    const completedCount = moduleCompletionMap.get(mod.moduleId) ?? 0;
 
     return {
       moduleId: mod.moduleId,
@@ -839,18 +841,17 @@ export function getStudentSegments(opts: {
 }
 
 export function getDropOffAnalysis(opts: {
-  instructorId: number;
+  courseIds: number[];
   now: string;
   dateRange?: DateRange;
 }): CourseDropOffData[] {
-  const courseIds = getCourseIdsForInstructor(opts.instructorId);
-  if (courseIds.length === 0) return [];
+  if (opts.courseIds.length === 0) return [];
 
   // Get course titles
   const courseRows = db
     .select({ id: courses.id, title: courses.title })
     .from(courses)
-    .where(inArray(courses.id, courseIds))
+    .where(inArray(courses.id, opts.courseIds))
     .all();
 
   return courseRows.map((course) => {

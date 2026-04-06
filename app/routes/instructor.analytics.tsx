@@ -3,6 +3,7 @@ import type { Route } from "./+types/instructor.analytics";
 import { getCurrentUserId } from "~/lib/session";
 import { getUserById, getUsersByRole } from "~/services/userService";
 import {
+  getCourseIdsForInstructor,
   getTotalRevenue,
   getTotalEnrollments,
   getAverageCompletionRate,
@@ -109,7 +110,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
-  const serviceOpts = { instructorId: targetInstructorId, dateRange };
+  const courseIds = getCourseIdsForInstructor(targetInstructorId);
+  const serviceOpts = { courseIds, dateRange };
   const now = new Date().toISOString();
 
   return {
@@ -701,7 +703,7 @@ export function HydrateFallback() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="mb-8 grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <Card key={i}>
             <CardHeader>
@@ -712,6 +714,23 @@ export function HydrateFallback() {
             </CardContent>
           </Card>
         ))}
+      </div>
+      {/* Drop-off Analysis skeleton */}
+      <div>
+        <Skeleton className="mb-4 h-6 w-40" />
+        <div className="space-y-4">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Card key={i}>
+              <div className="flex items-center justify-between p-6">
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+                <Skeleton className="size-5" />
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );

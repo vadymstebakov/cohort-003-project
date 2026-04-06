@@ -12,6 +12,7 @@ vi.mock("~/db", () => ({
 }));
 
 import {
+  getCourseIdsForInstructor,
   getTotalRevenue,
   getTotalEnrollments,
   getAverageCompletionRate,
@@ -27,6 +28,10 @@ import {
   getStudentSegments,
   getDropOffAnalysis,
 } from "./analyticsService";
+
+function courseIdsFor(instructorId: number) {
+  return getCourseIdsForInstructor(instructorId);
+}
 
 // ─── Helpers ───
 
@@ -181,7 +186,7 @@ describe("analyticsService", () => {
 
   describe("getTotalRevenue", () => {
     it("returns 0 when no purchases exist", () => {
-      const revenue = getTotalRevenue({ instructorId: base.instructor.id });
+      const revenue = getTotalRevenue({ courseIds: courseIdsFor(base.instructor.id)});
       expect(revenue).toBe(0);
     });
 
@@ -196,7 +201,7 @@ describe("analyticsService", () => {
       createPurchase({ userId: student.id, courseId: base.course.id, pricePaid: 5000 });
       createPurchase({ userId: student.id, courseId: course2.id, pricePaid: 3000 });
 
-      const revenue = getTotalRevenue({ instructorId: base.instructor.id });
+      const revenue = getTotalRevenue({ courseIds: courseIdsFor(base.instructor.id)});
       expect(revenue).toBe(8000);
     });
 
@@ -217,7 +222,7 @@ describe("analyticsService", () => {
       createPurchase({ userId: student.id, courseId: base.course.id, pricePaid: 5000 });
       createPurchase({ userId: student.id, courseId: otherCourse.id, pricePaid: 9000 });
 
-      const revenue = getTotalRevenue({ instructorId: base.instructor.id });
+      const revenue = getTotalRevenue({ courseIds: courseIdsFor(base.instructor.id)});
       expect(revenue).toBe(5000);
     });
 
@@ -236,8 +241,7 @@ describe("analyticsService", () => {
         createdAt: "2025-03-15T00:00:00.000Z",
       });
 
-      const revenue = getTotalRevenue({
-        instructorId: base.instructor.id,
+      const revenue = getTotalRevenue({ courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -253,7 +257,7 @@ describe("analyticsService", () => {
         .returning()
         .get();
 
-      const revenue = getTotalRevenue({ instructorId: newInstructor.id });
+      const revenue = getTotalRevenue({ courseIds: courseIdsFor(newInstructor.id)});
       expect(revenue).toBe(0);
     });
   });
@@ -262,7 +266,7 @@ describe("analyticsService", () => {
 
   describe("getTotalEnrollments", () => {
     it("returns 0 when no enrollments exist", () => {
-      const count = getTotalEnrollments({ instructorId: base.instructor.id });
+      const count = getTotalEnrollments({ courseIds: courseIdsFor(base.instructor.id)});
       expect(count).toBe(0);
     });
 
@@ -279,7 +283,7 @@ describe("analyticsService", () => {
       createEnrollment({ userId: s2.id, courseId: base.course.id });
       createEnrollment({ userId: s1.id, courseId: course2.id });
 
-      const count = getTotalEnrollments({ instructorId: base.instructor.id });
+      const count = getTotalEnrollments({ courseIds: courseIdsFor(base.instructor.id)});
       expect(count).toBe(3);
     });
 
@@ -300,7 +304,7 @@ describe("analyticsService", () => {
       createEnrollment({ userId: student.id, courseId: base.course.id });
       createEnrollment({ userId: student.id, courseId: otherCourse.id });
 
-      const count = getTotalEnrollments({ instructorId: base.instructor.id });
+      const count = getTotalEnrollments({ courseIds: courseIdsFor(base.instructor.id)});
       expect(count).toBe(1);
     });
 
@@ -319,8 +323,7 @@ describe("analyticsService", () => {
         enrolledAt: "2025-03-15T00:00:00.000Z",
       });
 
-      const count = getTotalEnrollments({
-        instructorId: base.instructor.id,
+      const count = getTotalEnrollments({ courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -334,7 +337,7 @@ describe("analyticsService", () => {
 
   describe("getAverageCompletionRate", () => {
     it("returns 0 when no enrollments exist", () => {
-      const rate = getAverageCompletionRate({ instructorId: base.instructor.id });
+      const rate = getAverageCompletionRate({ courseIds: courseIdsFor(base.instructor.id)});
       expect(rate).toBe(0);
     });
 
@@ -358,7 +361,7 @@ describe("analyticsService", () => {
       createEnrollment({ userId: s4.id, courseId: base.course.id });
 
       // 2 completed out of 4 = 50%
-      const rate = getAverageCompletionRate({ instructorId: base.instructor.id });
+      const rate = getAverageCompletionRate({ courseIds: courseIdsFor(base.instructor.id)});
       expect(rate).toBe(50);
     });
 
@@ -370,7 +373,7 @@ describe("analyticsService", () => {
         completedAt: "2025-02-01T00:00:00.000Z",
       });
 
-      const rate = getAverageCompletionRate({ instructorId: base.instructor.id });
+      const rate = getAverageCompletionRate({ courseIds: courseIdsFor(base.instructor.id)});
       expect(rate).toBe(100);
     });
 
@@ -391,8 +394,7 @@ describe("analyticsService", () => {
       });
 
       // Only s2 in range, not completed
-      const rate = getAverageCompletionRate({
-        instructorId: base.instructor.id,
+      const rate = getAverageCompletionRate({ courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -406,7 +408,7 @@ describe("analyticsService", () => {
 
   describe("getAverageQuizPassRate", () => {
     it("returns 0 when no quizzes exist", () => {
-      const rate = getAverageQuizPassRate({ instructorId: base.instructor.id });
+      const rate = getAverageQuizPassRate({ courseIds: courseIdsFor(base.instructor.id)});
       expect(rate).toBe(0);
     });
 
@@ -414,7 +416,7 @@ describe("analyticsService", () => {
       const { lesson } = createModuleAndLesson(base.course.id);
       createQuiz(lesson.id);
 
-      const rate = getAverageQuizPassRate({ instructorId: base.instructor.id });
+      const rate = getAverageQuizPassRate({ courseIds: courseIdsFor(base.instructor.id)});
       expect(rate).toBe(0);
     });
 
@@ -433,7 +435,7 @@ describe("analyticsService", () => {
       createQuizAttempt({ userId: s2.id, quizId: quiz.id, score: 0.3, passed: false });
 
       // 1 passed out of 2 students = 50%
-      const rate = getAverageQuizPassRate({ instructorId: base.instructor.id });
+      const rate = getAverageQuizPassRate({ courseIds: courseIdsFor(base.instructor.id)});
       expect(rate).toBe(50);
     });
 
@@ -444,7 +446,7 @@ describe("analyticsService", () => {
 
       createQuizAttempt({ userId: student.id, quizId: quiz.id, score: 0.9, passed: true });
 
-      const rate = getAverageQuizPassRate({ instructorId: base.instructor.id });
+      const rate = getAverageQuizPassRate({ courseIds: courseIdsFor(base.instructor.id)});
       expect(rate).toBe(100);
     });
 
@@ -471,8 +473,7 @@ describe("analyticsService", () => {
       });
 
       // Only s2 in range, who failed
-      const rate = getAverageQuizPassRate({
-        instructorId: base.instructor.id,
+      const rate = getAverageQuizPassRate({ courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -506,7 +507,7 @@ describe("analyticsService", () => {
       });
 
       // No quizzes for base instructor
-      const rate = getAverageQuizPassRate({ instructorId: base.instructor.id });
+      const rate = getAverageQuizPassRate({ courseIds: courseIdsFor(base.instructor.id)});
       expect(rate).toBe(0);
     });
   });
@@ -551,7 +552,7 @@ describe("analyticsService", () => {
 
   describe("getRevenueTrend", () => {
     it("returns empty data when no purchases exist", () => {
-      const result = getRevenueTrend({ instructorId: base.instructor.id });
+      const result = getRevenueTrend({ courseIds: courseIdsFor(base.instructor.id)});
       expect(result.data).toEqual([]);
     });
 
@@ -576,8 +577,7 @@ describe("analyticsService", () => {
         createdAt: "2025-02-10T00:00:00.000Z",
       });
 
-      const result = getRevenueTrend({
-        instructorId: base.instructor.id,
+      const result = getRevenueTrend({ courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-01-01T00:00:00.000Z",
           to: "2025-03-01T00:00:00.000Z",
@@ -607,8 +607,7 @@ describe("analyticsService", () => {
         createdAt: "2025-03-15T00:00:00.000Z",
       });
 
-      const result = getRevenueTrend({
-        instructorId: base.instructor.id,
+      const result = getRevenueTrend({ courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -624,7 +623,7 @@ describe("analyticsService", () => {
 
   describe("getEnrollmentTrend", () => {
     it("returns empty data when no enrollments exist", () => {
-      const result = getEnrollmentTrend({ instructorId: base.instructor.id });
+      const result = getEnrollmentTrend({ courseIds: courseIdsFor(base.instructor.id)});
       expect(result.data).toEqual([]);
     });
 
@@ -649,8 +648,7 @@ describe("analyticsService", () => {
         enrolledAt: "2025-02-10T00:00:00.000Z",
       });
 
-      const result = getEnrollmentTrend({
-        instructorId: base.instructor.id,
+      const result = getEnrollmentTrend({ courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-01-01T00:00:00.000Z",
           to: "2025-03-01T00:00:00.000Z",
@@ -668,8 +666,7 @@ describe("analyticsService", () => {
 
   describe("getPerCourseEnrollments", () => {
     it("returns empty array when no enrollments exist", () => {
-      const result = getPerCourseEnrollments({
-        instructorId: base.instructor.id,
+      const result = getPerCourseEnrollments({ courseIds: courseIdsFor(base.instructor.id),
       });
       expect(result).toEqual([]);
     });
@@ -689,8 +686,7 @@ describe("analyticsService", () => {
       createEnrollment({ userId: s2.id, courseId: course2.id });
       createEnrollment({ userId: s3.id, courseId: course2.id });
 
-      const result = getPerCourseEnrollments({
-        instructorId: base.instructor.id,
+      const result = getPerCourseEnrollments({ courseIds: courseIdsFor(base.instructor.id),
       });
 
       expect(result.length).toBe(2);
@@ -722,8 +718,7 @@ describe("analyticsService", () => {
       createEnrollment({ userId: student.id, courseId: base.course.id });
       createEnrollment({ userId: student.id, courseId: otherCourse.id });
 
-      const result = getPerCourseEnrollments({
-        instructorId: base.instructor.id,
+      const result = getPerCourseEnrollments({ courseIds: courseIdsFor(base.instructor.id),
       });
 
       expect(result.length).toBe(1);
@@ -745,8 +740,7 @@ describe("analyticsService", () => {
         enrolledAt: "2025-03-15T00:00:00.000Z",
       });
 
-      const result = getPerCourseEnrollments({
-        instructorId: base.instructor.id,
+      const result = getPerCourseEnrollments({ courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -762,8 +756,7 @@ describe("analyticsService", () => {
 
   describe("getPerCourseCompletionRates", () => {
     it("returns empty array when no enrollments exist", () => {
-      const result = getPerCourseCompletionRates({
-        instructorId: base.instructor.id,
+      const result = getPerCourseCompletionRates({ courseIds: courseIdsFor(base.instructor.id),
       });
       expect(result).toEqual([]);
     });
@@ -794,8 +787,7 @@ describe("analyticsService", () => {
         completedAt: "2025-02-01T00:00:00.000Z",
       });
 
-      const result = getPerCourseCompletionRates({
-        instructorId: base.instructor.id,
+      const result = getPerCourseCompletionRates({ courseIds: courseIdsFor(base.instructor.id),
       });
 
       expect(result.length).toBe(2);
@@ -827,8 +819,7 @@ describe("analyticsService", () => {
         enrolledAt: "2025-03-15T00:00:00.000Z",
       });
 
-      const result = getPerCourseCompletionRates({
-        instructorId: base.instructor.id,
+      const result = getPerCourseCompletionRates({ courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -845,8 +836,7 @@ describe("analyticsService", () => {
 
   describe("getQuizPerformanceByCourse", () => {
     it("returns empty array when no quizzes exist", () => {
-      const result = getQuizPerformanceByCourse({
-        instructorId: base.instructor.id,
+      const result = getQuizPerformanceByCourse({ courseIds: courseIdsFor(base.instructor.id),
       });
       expect(result).toEqual([]);
     });
@@ -874,8 +864,7 @@ describe("analyticsService", () => {
         passed: false,
       });
 
-      const result = getQuizPerformanceByCourse({
-        instructorId: base.instructor.id,
+      const result = getQuizPerformanceByCourse({ courseIds: courseIdsFor(base.instructor.id),
       });
 
       expect(result.length).toBe(1);
@@ -906,8 +895,7 @@ describe("analyticsService", () => {
         passed: true,
       });
 
-      const result = getQuizPerformanceByCourse({
-        instructorId: base.instructor.id,
+      const result = getQuizPerformanceByCourse({ courseIds: courseIdsFor(base.instructor.id),
       });
 
       expect(result[0].averagePassRate).toBe(100);
@@ -918,8 +906,7 @@ describe("analyticsService", () => {
       const { lesson } = createModuleAndLesson(base.course.id);
       createQuiz(lesson.id);
 
-      const result = getQuizPerformanceByCourse({
-        instructorId: base.instructor.id,
+      const result = getQuizPerformanceByCourse({ courseIds: courseIdsFor(base.instructor.id),
       });
 
       expect(result.length).toBe(1);
@@ -949,8 +936,7 @@ describe("analyticsService", () => {
         attemptedAt: "2025-03-15T00:00:00.000Z",
       });
 
-      const result = getQuizPerformanceByCourse({
-        instructorId: base.instructor.id,
+      const result = getQuizPerformanceByCourse({ courseIds: courseIdsFor(base.instructor.id),
         dateRange: {
           from: "2025-02-01T00:00:00.000Z",
           to: "2025-04-01T00:00:00.000Z",
@@ -1253,7 +1239,7 @@ describe("analyticsService", () => {
         .returning()
         .get();
 
-      const result = getDropOffAnalysis({ instructorId: newInstructor.id, now });
+      const result = getDropOffAnalysis({ courseIds: courseIdsFor(newInstructor.id), now });
       expect(result).toEqual([]);
     });
 
@@ -1285,8 +1271,7 @@ describe("analyticsService", () => {
         completedAt: "2025-01-10T00:00:00.000Z",
       });
 
-      const result = getDropOffAnalysis({
-        instructorId: base.instructor.id,
+      const result = getDropOffAnalysis({ courseIds: courseIdsFor(base.instructor.id),
         now,
       });
 
@@ -1304,8 +1289,7 @@ describe("analyticsService", () => {
       const student = createStudent("S1", "s1@test.com");
       createEnrollment({ userId: student.id, courseId: base.course.id });
 
-      const result = getDropOffAnalysis({
-        instructorId: base.instructor.id,
+      const result = getDropOffAnalysis({ courseIds: courseIdsFor(base.instructor.id),
         now,
       });
 
